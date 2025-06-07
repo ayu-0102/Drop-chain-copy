@@ -33,22 +33,23 @@ const UserDashboard = () => {
   const [agentConfirmation, setAgentConfirmation] = useState<AgentConfirmation | null>(null);
   const navigate = useNavigate();
 
-  // Simulate real-time listening for agent confirmations
+  // Listen for agent confirmations from localStorage
   useEffect(() => {
-    if (orderPosted) {
-      // Simulate agent confirmation after 10 seconds
-      const timer = setTimeout(() => {
-        setAgentConfirmation({
-          agentName: "Rajesh Kumar",
-          agentRating: 4.8,
-          eta: "35 minutes",
-          pickupTime: "5 minutes"
-        });
-      }, 10000);
+    const checkForConfirmations = () => {
+      const confirmations = localStorage.getItem('agentConfirmations');
+      if (confirmations) {
+        const parsed = JSON.parse(confirmations);
+        if (parsed.length > 0) {
+          setAgentConfirmation(parsed[0]);
+          // Clear the confirmation after showing it
+          localStorage.removeItem('agentConfirmations');
+        }
+      }
+    };
 
-      return () => clearTimeout(timer);
-    }
-  }, [orderPosted]);
+    const interval = setInterval(checkForConfirmations, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const recentOrders = [
     {
@@ -67,26 +68,68 @@ const UserDashboard = () => {
     }
   ];
 
+  const extractInfoFromPrompt = (userPrompt: string): ExtractedOrderInfo => {
+    // Simple AI simulation - extract information from prompt
+    const lowerPrompt = userPrompt.toLowerCase();
+    
+    // Extract restaurant name
+    let restaurant = "Local Restaurant";
+    if (lowerPrompt.includes("from")) {
+      const fromIndex = lowerPrompt.indexOf("from") + 5;
+      const restPart = userPrompt.substring(fromIndex).trim();
+      const words = restPart.split(" ");
+      restaurant = words.slice(0, 3).join(" ").replace(/for.*/, "").trim();
+    }
+
+    // Extract dish name
+    let dish = "Food Item";
+    const commonDishes = ["dosa", "burger", "pizza", "biryani", "chicken", "naan", "rice", "curry"];
+    for (const dishType of commonDishes) {
+      if (lowerPrompt.includes(dishType)) {
+        const dishIndex = lowerPrompt.indexOf(dishType);
+        const beforeDish = userPrompt.substring(Math.max(0, dishIndex - 20), dishIndex + dishType.length + 10);
+        dish = beforeDish.split(" ").slice(-3).join(" ").trim();
+        break;
+      }
+    }
+
+    // Extract quantity
+    let quantity = 1;
+    const quantityMatch = userPrompt.match(/(\d+)/);
+    if (quantityMatch) {
+      quantity = parseInt(quantityMatch[1]);
+    }
+
+    // Generate estimated price based on dish type
+    let basePrice = 150;
+    if (lowerPrompt.includes("biryani")) basePrice = 250;
+    if (lowerPrompt.includes("pizza")) basePrice = 300;
+    if (lowerPrompt.includes("burger")) basePrice = 180;
+    
+    const estimatedPrice = `₹${basePrice * quantity}`;
+
+    return {
+      restaurant: restaurant,
+      dish: dish,
+      quantity: quantity,
+      estimatedPrice: estimatedPrice,
+      deliveryLocation: "Current Location (Koramangala 5th Block)",
+      urgency: "Normal",
+      userName: "John Doe",
+      userId: "user_123",
+      orderId: `order_${Date.now()}`
+    };
+  };
+
   const handleSubmitPrompt = async () => {
     if (!prompt.trim()) return;
     
     setIsProcessing(true);
     
-    // Simulate AI processing and information extraction
+    // Simulate AI processing
     setTimeout(() => {
-      const mockExtraction: ExtractedOrderInfo = {
-        restaurant: "Anna Idli Restro",
-        dish: "Masala Dosa",
-        quantity: 1,
-        estimatedPrice: "₹120",
-        deliveryLocation: "Current Location (Koramangala 5th Block)",
-        urgency: "Normal",
-        userName: "John Doe",
-        userId: "user_123",
-        orderId: `order_${Date.now()}`
-      };
-      
-      setExtractedInfo(mockExtraction);
+      const extracted = extractInfoFromPrompt(prompt);
+      setExtractedInfo(extracted);
       setIsProcessing(false);
     }, 3000);
   };
@@ -94,13 +137,34 @@ const UserDashboard = () => {
   const confirmAndPostOrder = () => {
     if (!extractedInfo) return;
     
-    // Here you would post the order to your backend/smart contract
-    console.log('Posting order to blockchain/backend:', extractedInfo);
+    console.log('Posting order to delivery agents:', extractedInfo);
     
-    // Simulate posting to delivery agents
+    // Store the order in localStorage for delivery agents to see
+    const existingOrders = localStorage.getItem('deliveryJobs');
+    const orders = existingOrders ? JSON.parse(existingOrders) : [];
+    
+    const newJob = {
+      id: extractedInfo.orderId,
+      customerPrompt: prompt,
+      restaurant: extractedInfo.restaurant,
+      dish: extractedInfo.dish,
+      quantity: extractedInfo.quantity,
+      estimatedPay: parseInt(extractedInfo.estimatedPrice.replace('₹', '')),
+      pickupLocation: `${extractedInfo.restaurant}, Koramangala`,
+      dropLocation: extractedInfo.deliveryLocation,
+      distance: "2.1 km",
+      timePosted: "Just now",
+      urgency: extractedInfo.urgency,
+      customerRating: 4.8,
+      userName: extractedInfo.userName,
+      userId: extractedInfo.userId,
+      status: 'available'
+    };
+    
+    orders.unshift(newJob);
+    localStorage.setItem('deliveryJobs', JSON.stringify(orders));
+    
     setOrderPosted(true);
-    
-    // Clear the form
     setPrompt('');
   };
 
@@ -266,6 +330,13 @@ const UserDashboard = () => {
               <p className="text-sm">{extractedInfo?.dish} from {extractedInfo?.restaurant}</p>
               <p className="text-sm text-muted-foreground">Drop: {extractedInfo?.deliveryLocation}</p>
             </div>
+            <Button
+              onClick={() => navigate('/agent-dashboard')}
+              variant="outline"
+              className="w-full"
+            >
+              View as Delivery Agent
+            </Button>
           </CardContent>
         </Card>
       )}

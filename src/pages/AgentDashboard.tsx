@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { MapPin, Clock, DollarSign, User, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
 
 interface DeliveryJob {
@@ -27,79 +28,35 @@ const AgentDashboard = () => {
   const [activeFilter, setActiveFilter] = useState('All Jobs');
   const [availableJobs, setAvailableJobs] = useState<DeliveryJob[]>([]);
   const [confirmedJobs, setConfirmedJobs] = useState<DeliveryJob[]>([]);
+  const [agentName, setAgentName] = useState('');
   const navigate = useNavigate();
 
   const filters = ['All Jobs', 'Available', 'My Jobs', 'Completed'];
 
-  // Simulate real-time job updates
+  // Load jobs from localStorage and listen for new ones
   useEffect(() => {
-    // Initial jobs
-    const initialJobs: DeliveryJob[] = [
-      {
-        id: 'job_1',
-        customerPrompt: "Order one masala dosa from Anna Idli Restro for me",
-        restaurant: "Anna Idli Restro",
-        dish: "Masala Dosa",
-        quantity: 1,
-        estimatedPay: 150,
-        pickupLocation: "Anna Idli Restro, Koramangala",
-        dropLocation: "Koramangala 5th Block",
-        distance: "2.1 km",
-        timePosted: "5 minutes ago",
-        urgency: "Normal",
-        customerRating: 4.8,
-        userName: "John Doe",
-        userId: "user_123",
-        status: 'available'
-      },
-      {
-        id: 'job_2',
-        customerPrompt: "Get me 2 butter chicken with naan from Punjabi Dhaba",
-        restaurant: "Punjabi Dhaba",
-        dish: "Butter Chicken + Naan",
-        quantity: 2,
-        estimatedPay: 280,
-        pickupLocation: "Punjabi Dhaba, Brigade Road",
-        dropLocation: "Electronic City Phase 1",
-        distance: "18.5 km",
-        timePosted: "12 minutes ago",
-        urgency: "High",
-        customerRating: 4.9,
-        userName: "Sarah Smith",
-        userId: "user_456",
-        status: 'available'
+    const loadJobs = () => {
+      const storedJobs = localStorage.getItem('deliveryJobs');
+      if (storedJobs) {
+        const jobs = JSON.parse(storedJobs);
+        setAvailableJobs(jobs.filter((job: DeliveryJob) => job.status === 'available'));
       }
-    ];
+    };
 
-    setAvailableJobs(initialJobs);
+    // Load initial jobs
+    loadJobs();
 
-    // Simulate new job appearing from UserDashboard
-    const timer = setTimeout(() => {
-      const newJob: DeliveryJob = {
-        id: `order_${Date.now()}`,
-        customerPrompt: "Order one masala dosa from Anna Idli Restro for me",
-        restaurant: "Anna Idli Restro",
-        dish: "Masala Dosa",
-        quantity: 1,
-        estimatedPay: 120,
-        pickupLocation: "Anna Idli Restro, Koramangala",
-        dropLocation: "Koramangala 5th Block",
-        distance: "2.1 km",
-        timePosted: "Just now",
-        urgency: "Normal",
-        customerRating: 4.8,
-        userName: "John Doe",
-        userId: "user_123",
-        status: 'available'
-      };
-
-      setAvailableJobs(prev => [newJob, ...prev]);
-    }, 5000);
-
-    return () => clearTimeout(timer);
+    // Set up interval to check for new jobs
+    const interval = setInterval(loadJobs, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleConfirmJob = (jobId: string) => {
+    if (!agentName.trim()) {
+      alert('Please enter your name first!');
+      return;
+    }
+
     const job = availableJobs.find(j => j.id === jobId);
     if (!job) return;
 
@@ -108,8 +65,27 @@ const AgentDashboard = () => {
     setConfirmedJobs(prev => [...prev, confirmedJob]);
     setAvailableJobs(prev => prev.filter(j => j.id !== jobId));
 
-    // Here you would call your backend/smart contract to confirm the job
-    console.log('Confirming job:', confirmedJob);
+    // Update localStorage
+    const allJobs = localStorage.getItem('deliveryJobs');
+    if (allJobs) {
+      const jobs = JSON.parse(allJobs);
+      const updatedJobs = jobs.map((j: DeliveryJob) => 
+        j.id === jobId ? { ...j, status: 'confirmed' } : j
+      );
+      localStorage.setItem('deliveryJobs', JSON.stringify(updatedJobs));
+    }
+
+    // Store agent confirmation for user to see
+    const confirmation = {
+      agentName: agentName,
+      agentRating: 4.8,
+      eta: "35 minutes",
+      pickupTime: "5 minutes"
+    };
+    
+    localStorage.setItem('agentConfirmations', JSON.stringify([confirmation]));
+
+    console.log('Job confirmed by:', agentName, confirmedJob);
   };
 
   const getFilteredJobs = () => {
@@ -206,7 +182,7 @@ const AgentDashboard = () => {
           ) : (
             <div className="flex items-center space-x-2 text-green-400">
               <CheckCircle size={16} />
-              <span className="text-sm font-medium">Confirmed</span>
+              <span className="text-sm font-medium">Confirmed by {agentName}</span>
             </div>
           )}
         </div>
@@ -221,11 +197,35 @@ const AgentDashboard = () => {
           <h1 className="text-2xl font-bold text-foreground">Delivery Jobs</h1>
           <p className="text-muted-foreground">Browse and confirm delivery jobs from customers</p>
         </div>
-        <div className="flex items-center space-x-2 text-primary">
-          <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">{getFilteredJobs().length} Available Jobs</span>
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/user-dashboard')}
+          >
+            Back to User Dashboard
+          </Button>
+          <div className="flex items-center space-x-2 text-primary">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium">{getFilteredJobs().length} Available Jobs</span>
+          </div>
         </div>
       </div>
+
+      {/* Agent Name Input */}
+      <Card className="card-dark">
+        <CardHeader>
+          <CardTitle>Agent Information</CardTitle>
+          <CardDescription>Enter your name to confirm orders</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Input
+            placeholder="Enter your name (e.g., Rajesh Kumar)"
+            value={agentName}
+            onChange={(e) => setAgentName(e.target.value)}
+            className="input-dark"
+          />
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <div className="flex space-x-3 overflow-x-auto">
