@@ -5,6 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import WalletConnection from "./components/WalletConnection";
+import UserDashboard from "./pages/UserDashboard";
+import AgentDashboard from "./pages/AgentDashboard";
+import UserOrders from "./pages/UserOrders";
 import Dashboard from "./pages/Dashboard";
 import PostJob from "./pages/PostJob";
 import JobDetails from "./pages/JobDetails";
@@ -24,6 +27,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<WalletConnection />} />
+          <Route path="/user-dashboard" element={<UserDashboard />} />
+          <Route path="/agent-dashboard" element={<AgentDashboard />} />
+          <Route path="/user-orders" element={<UserOrders />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/post-job" element={<PostJob />} />
           <Route path="/job/:id" element={<JobDetails />} />
