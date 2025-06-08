@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { Send, MapPin, Clock, Bot, History, User, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
+import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,6 +27,7 @@ interface AgentConfirmation {
 
 const UserDashboard = () => {
   const [prompt, setPrompt] = useState('');
+  const [userLocation, setUserLocation] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedInfo, setExtractedInfo] = useState<ExtractedOrderInfo | null>(null);
   const [orderPosted, setOrderPosted] = useState(false);
@@ -113,7 +114,7 @@ const UserDashboard = () => {
       dish: dish,
       quantity: quantity,
       estimatedPrice: estimatedPrice,
-      deliveryLocation: "Current Location (Koramangala 5th Block)",
+      deliveryLocation: userLocation || "Location not specified",
       urgency: "Normal",
       userName: "John Doe",
       userId: "user_123",
@@ -123,6 +124,10 @@ const UserDashboard = () => {
 
   const handleSubmitPrompt = async () => {
     if (!prompt.trim()) return;
+    if (!userLocation.trim()) {
+      alert('Please enter your delivery location first!');
+      return;
+    }
     
     setIsProcessing(true);
     
@@ -193,6 +198,27 @@ const UserDashboard = () => {
         </div>
       </div>
 
+      {/* User Location Input */}
+      <Card className="card-dark">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <MapPin className="text-primary" size={20} />
+            <span>Delivery Location</span>
+          </CardTitle>
+          <CardDescription>
+            Enter your delivery address where the order should be dropped
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Input
+            placeholder="e.g., 123 Main Street, Koramangala 5th Block, Bangalore"
+            value={userLocation}
+            onChange={(e) => setUserLocation(e.target.value)}
+            className="input-dark"
+          />
+        </CardContent>
+      </Card>
+
       {/* Agent Confirmation Status */}
       {agentConfirmation && (
         <Card className="card-dark border-green-500/50 bg-green-500/10">
@@ -221,6 +247,10 @@ const UserDashboard = () => {
                 <span>•</span>
                 <span>ETA: {agentConfirmation.eta}</span>
               </div>
+              <div className="mt-2 p-2 bg-secondary/30 rounded">
+                <p className="text-xs text-muted-foreground">Drop Location:</p>
+                <p className="text-sm font-medium">{userLocation}</p>
+              </div>
             </div>
             <Button className="w-full gradient-button">
               Pay Now (ETH/Tokens)
@@ -242,7 +272,7 @@ const UserDashboard = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder="Type your order here... e.g., 'I want 2 butter chicken with naan from Punjabi Dhaba, deliver to my office'"
+            placeholder="Type your order here... e.g., 'I want 2 butter chicken with naan from Punjabi Dhaba'"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             className="min-h-[100px] input-dark"
@@ -251,7 +281,7 @@ const UserDashboard = () => {
           
           <Button
             onClick={handleSubmitPrompt}
-            disabled={!prompt.trim() || isProcessing || orderPosted}
+            disabled={!prompt.trim() || !userLocation.trim() || isProcessing || orderPosted}
             className="gradient-button w-full"
           >
             {isProcessing ? (
