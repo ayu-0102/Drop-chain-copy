@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Web3Provider } from "./contexts/Web3Context";
 import WalletConnection from "./components/WalletConnection";
 import UserDashboard from "./pages/UserDashboard";
 import AgentDashboard from "./pages/AgentDashboard";
@@ -21,27 +22,28 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<WalletConnection />} />
-          <Route path="/user-dashboard" element={<UserDashboard />} />
-          <Route path="/agent-dashboard" element={<AgentDashboard />} />
-          <Route path="/user-orders" element={<UserOrders />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/post-job" element={<PostJob />} />
-          <Route path="/job/:id" element={<JobDetails />} />
-          <Route path="/ongoing-delivery" element={<OngoingDelivery />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/delivery-completed" element={<DeliveryCompleted />} />
-          <Route path="/dao" element={<DAOGovernance />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <Web3Provider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<WalletConnection />} />
+            <Route path="/user-dashboard" element={<UserDashboard />} />
+            <Route path="/agent-dashboard" element={<AgentDashboard />} />
+            <Route path="/user-orders" element={<UserOrders />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/post-job" element={<PostJob />} />
+            <Route path="/job/:id" element={<JobDetails />} />
+            <Route path="/ongoing-delivery" element={<OngoingDelivery />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/delivery-completed" element={<DeliveryCompleted />} />
+            <Route path="/dao" element={<DAOGovernance />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </Web3Provider>
   </QueryClientProvider>
 );
 

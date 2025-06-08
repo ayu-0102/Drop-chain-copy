@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Send, MapPin, Clock, Bot, History, User, CheckCircle } from 'lucide-react';
+import { Send, MapPin, Clock, Bot, History, User, CheckCircle, Wallet } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useNavigate } from 'react-router-dom';
+import { useWeb3 } from '../contexts/Web3Context';
+import { useToast } from '../hooks/use-toast';
 
 interface ExtractedOrderInfo {
   restaurant: string;
@@ -32,7 +34,12 @@ const UserDashboard = () => {
   const [extractedInfo, setExtractedInfo] = useState<ExtractedOrderInfo | null>(null);
   const [orderPosted, setOrderPosted] = useState(false);
   const [agentConfirmation, setAgentConfirmation] = useState<AgentConfirmation | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('0.01');
+  const [blockchainOrderId, setBlockchainOrderId] = useState<string | null>(null);
+  
   const navigate = useNavigate();
+  const { isConnected, walletAddress, connectWallet, postOrder, payAgent, isLoading } = useWeb3();
+  const { toast } = useToast();
 
   // Listen for agent confirmations from localStorage
   useEffect(() => {
@@ -128,6 +135,14 @@ const UserDashboard = () => {
       alert('Please enter your delivery location first!');
       return;
     }
+    if (!isConnected) {
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet first",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsProcessing(true);
     
@@ -139,38 +154,109 @@ const UserDashboard = () => {
     }, 3000);
   };
 
-  const confirmAndPostOrder = () => {
-    if (!extractedInfo) return;
+  const confirmAndPostOrder = async () => {
+    if (!extractedInfo || !isConnected) return;
     
-    console.log('Posting order to delivery agents:', extractedInfo);
+    try {
+      console.log('Posting order to blockchain:', extractedInfo);
+      
+      // Post order to blockchain
+      const orderId = await postOrder(
+        extractedInfo.restaurant,
+        extractedInfo.dish,
+        extractedInfo.quantity,
+        `${extractedInfo.restaurant}, Koramangala`,
+        extractedInfo.deliveryLocation,
+        paymentAmount
+      );
+      
+      if (orderId) {
+        setBlockchainOrderId(orderId);
+        
+        // Also store in localStorage for local demo
+        const existingOrders = localStorage.getItem('deliveryJobs');
+        const orders = existingOrders ? JSON.parse(existingOrders) : [];
+        
+        const newJob = {
+          id: orderId,
+          customerPrompt: prompt,
+          restaurant: extractedInfo.restaurant,
+          dish: extractedInfo.dish,
+          quantity: extractedInfo.quantity,
+          estimatedPay: parseInt(extractedInfo.estimatedPrice.replace('₹', '')),
+          pickupLocation: `${extractedInfo.restaurant}, Koramangala`,
+          dropLocation: extractedInfo.deliveryLocation,
+          distance: "2.1 km",
+          timePosted: "Just now",
+          urgency: extractedInfo.urgency,
+          customerRating: 4.8,
+          userName: extractedInfo.userName,
+          userId: extractedInfo.userId,
+          status: 'available',
+          paymentAmount: paymentAmount
+        };
+        
+        orders.unshift(newJob);
+        localStorage.setItem('deliveryJobs', JSON.stringify(orders));
+        
+        setOrderPosted(true);
+        setPrompt('');
+        
+        toast({
+          title: "Order posted successfully!",
+          description: `Order posted to blockchain with ID: ${orderId}`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to post order:', error);
+      toast({
+        title: "Failed to post order",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!blockchainOrderId || !agentConfirmation) return;
     
-    // Store the order in localStorage for delivery agents to see
-    const existingOrders = localStorage.getItem('deliveryJobs');
-    const orders = existingOrders ? JSON.parse(existingOrders) : [];
-    
-    const newJob = {
-      id: extractedInfo.orderId,
-      customerPrompt: prompt,
-      restaurant: extractedInfo.restaurant,
-      dish: extractedInfo.dish,
-      quantity: extractedInfo.quantity,
-      estimatedPay: parseInt(extractedInfo.estimatedPrice.replace('₹', '')),
-      pickupLocation: `${extractedInfo.restaurant}, Koramangala`,
-      dropLocation: extractedInfo.deliveryLocation,
-      distance: "2.1 km",
-      timePosted: "Just now",
-      urgency: extractedInfo.urgency,
-      customerRating: 4.8,
-      userName: extractedInfo.userName,
-      userId: extractedInfo.userId,
-      status: 'available'
-    };
-    
-    orders.unshift(newJob);
-    localStorage.setItem('deliveryJobs', JSON.stringify(orders));
-    
-    setOrderPosted(true);
-    setPrompt('');
+    try {
+      const txHash = await payAgent(blockchainOrderId, paymentAmount);
+      
+      // Store payment confirmation for agent to see
+      const paymentConfirmation = {
+        orderId: blockchainOrderId,
+        customerName: extractedInfo?.userName || "John Doe",
+        agentName: agentConfirmation.agentName,
+        amount: paymentAmount,
+        txHash: txHash,
+        timestamp: new Date().toISOString()
+      };
+      
+      const existingPayments = localStorage.getItem('agentPayments');
+      const payments = existingPayments ? JSON.parse(existingPayments) : [];
+      payments.unshift(paymentConfirmation);
+      localStorage.setItem('agentPayments', JSON.stringify(payments));
+      
+      toast({
+        title: "Payment sent successfully!",
+        description: `${paymentAmount} ETH sent to ${agentConfirmation.agentName}`,
+      });
+      
+      // Reset states after successful payment
+      setOrderPosted(false);
+      setAgentConfirmation(null);
+      setExtractedInfo(null);
+      setBlockchainOrderId(null);
+      
+    } catch (error) {
+      console.error('Payment failed:', error);
+      toast({
+        title: "Payment failed",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -181,11 +267,26 @@ const UserDashboard = () => {
           <p className="text-muted-foreground">Just tell me what you want to order!</p>
         </div>
         <div className="flex items-center space-x-4">
+          {!isConnected ? (
+            <Button
+              onClick={connectWallet}
+              disabled={isLoading}
+              className="flex items-center space-x-2"
+            >
+              <Wallet size={16} />
+              <span>{isLoading ? 'Connecting...' : 'Connect Wallet'}</span>
+            </Button>
+          ) : (
+            <div className="flex items-center space-x-2 text-green-400">
+              <Wallet size={16} />
+              <span className="text-sm">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
+            </div>
+          )}
           <Button
             variant="outline"
             onClick={() => navigate('/agent-dashboard')}
           >
-            Switch to Agent Dashboard
+            Agent Dashboard
           </Button>
           <Button
             variant="outline"
@@ -251,9 +352,26 @@ const UserDashboard = () => {
                 <p className="text-xs text-muted-foreground">Drop Location:</p>
                 <p className="text-sm font-medium">{userLocation}</p>
               </div>
+              <div className="mt-2 p-2 bg-secondary/30 rounded">
+                <p className="text-xs text-muted-foreground">Payment Amount:</p>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    type="number"
+                    step="0.001"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    className="w-24 h-8"
+                  />
+                  <span className="text-sm font-medium">ETH</span>
+                </div>
+              </div>
             </div>
-            <Button className="w-full gradient-button">
-              Pay Now (ETH/Tokens)
+            <Button 
+              className="w-full gradient-button"
+              onClick={handlePayment}
+              disabled={!isConnected || isLoading}
+            >
+              {isLoading ? 'Processing...' : `Pay ${paymentAmount} ETH to ${agentConfirmation.agentName}`}
             </Button>
           </CardContent>
         </Card>
