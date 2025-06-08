@@ -175,14 +175,22 @@ const UserDashboard = () => {
           <h1 className="text-2xl font-bold text-foreground">AI Food Assistant</h1>
           <p className="text-muted-foreground">Just tell me what you want to order!</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/user-orders')}
-          className="flex items-center space-x-2"
-        >
-          <History size={16} />
-          <span>My Orders</span>
-        </Button>
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/agent-dashboard')}
+          >
+            Switch to Agent Dashboard
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/user-orders')}
+            className="flex items-center space-x-2"
+          >
+            <History size={16} />
+            <span>My Orders</span>
+          </Button>
+        </div>
       </div>
 
       {/* Agent Confirmation Status */}
@@ -214,6 +222,9 @@ const UserDashboard = () => {
                 <span>ETA: {agentConfirmation.eta}</span>
               </div>
             </div>
+            <Button className="w-full gradient-button">
+              Pay Now (ETH/Tokens)
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -330,13 +341,9 @@ const UserDashboard = () => {
               <p className="text-sm">{extractedInfo?.dish} from {extractedInfo?.restaurant}</p>
               <p className="text-sm text-muted-foreground">Drop: {extractedInfo?.deliveryLocation}</p>
             </div>
-            <Button
-              onClick={() => navigate('/agent-dashboard')}
-              variant="outline"
-              className="w-full"
-            >
-              View as Delivery Agent
-            </Button>
+            <p className="text-sm text-muted-foreground text-center">
+              To see agent confirmations, go to the Agent Dashboard or wait for updates here
+            </p>
           </CardContent>
         </Card>
       )}
