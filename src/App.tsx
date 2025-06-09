@@ -1,10 +1,9 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Web3Provider } from "./contexts/Web3Context";
+import { ICPWeb3Provider } from "./contexts/ICPWeb3Context";
 import WalletConnection from "./components/WalletConnection";
 import UserDashboard from "./pages/UserDashboard";
 import AgentDashboard from "./pages/AgentDashboard";
@@ -22,7 +21,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <Web3Provider>
+    <ICPWeb3Provider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -43,7 +42,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </Web3Provider>
+    </ICPWeb3Provider>
   </QueryClientProvider>
 );
 

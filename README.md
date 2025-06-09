@@ -1,73 +1,177 @@
-# Welcome to your Lovable project
+# DeliverDAO - Decentralized Delivery Platform on Internet Computer
 
-## Project info
+A decentralized food delivery platform built on the Internet Computer Protocol (ICP) that eliminates middlemen and connects customers directly with delivery agents.
 
-**URL**: https://lovable.dev/projects/3265c320-3dcc-4e4d-9991-9ff6de7491be
+## Features
 
-## How can I edit this code?
+- **AI-Powered Ordering**: Natural language processing for food orders
+- **Blockchain Integration**: Smart contracts on Internet Computer Protocol
+- **Direct Payments**: Peer-to-peer payments without intermediaries
+- **Agent Dashboard**: Real-time job management for delivery agents
+- **DAO Governance**: Decentralized dispute resolution and platform governance
 
-There are several ways of editing your application.
+## Technology Stack
 
-**Use Lovable**
+- **Frontend**: React, TypeScript, Tailwind CSS, shadcn/ui
+- **Blockchain**: Internet Computer Protocol (ICP)
+- **Smart Contracts**: Motoko
+- **Authentication**: Internet Identity
+- **State Management**: React Context API
+- **Build Tool**: Vite
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3265c320-3dcc-4e4d-9991-9ff6de7491be) and start prompting.
+## Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+Before you begin, ensure you have the following installed:
 
-**Use your preferred IDE**
+- [Node.js](https://nodejs.org/) (v16 or higher)
+- [DFX](https://internetcomputer.org/docs/current/developer-docs/setup/install/) (Internet Computer SDK)
+- [Internet Identity](https://identity.ic0.app/) for authentication
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd deliverdao
+   ```
 
-Follow these steps:
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. **Install DFX (if not already installed)**
+   ```bash
+   sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Development Setup
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. **Start the local Internet Computer replica**
+   ```bash
+   dfx start --background
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+2. **Deploy the canisters locally**
+   ```bash
+   dfx deploy
+   ```
+
+3. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Open your browser**
+   Navigate to `http://localhost:8080`
+
+## Deployment Commands
+
+### Local Development
+```bash
+# Start local replica
+dfx start --background
+
+# Deploy to local network
+npm run deploy:local
+
+# Stop local replica
+npm run stop
 ```
 
-**Edit a file directly in GitHub**
+### Production Deployment
+```bash
+# Deploy to Internet Computer mainnet
+npm run deploy:ic
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Smart Contract Architecture
 
-**Use GitHub Codespaces**
+The platform uses Motoko smart contracts deployed on ICP:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### DeliveryPlatform.mo
+- **Agent Registration**: Register delivery agents on-chain
+- **Order Management**: Post, confirm, and complete orders
+- **Payment Processing**: Handle payments between customers and agents
+- **Dispute Resolution**: Manage order disputes and resolutions
 
-## What technologies are used for this project?
+### Key Functions
+- `registerAgent(name: Text)`: Register as a delivery agent
+- `postOrder(...)`: Create a new delivery order
+- `confirmOrder(orderId: Nat)`: Agent confirms an order
+- `payAgent(orderId: Nat, amount: Float)`: Customer pays agent
 
-This project is built with:
+## Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+src/
+├── components/          # Reusable UI components
+├── contexts/           # React context providers
+├── contracts/          # Motoko smart contracts
+├── pages/             # Application pages
+├── utils/             # Utility functions and ICP integration
+└── hooks/             # Custom React hooks
 
-## How can I deploy this project?
+dfx.json               # DFX configuration
+package.json           # Node.js dependencies
+```
 
-Simply open [Lovable](https://lovable.dev/projects/3265c320-3dcc-4e4d-9991-9ff6de7491be) and click on Share -> Publish.
+## Environment Variables
 
-## Can I connect a custom domain to my Lovable project?
+Create a `.env` file based on `.env.example`:
 
-Yes, you can!
+```env
+REACT_APP_CANISTER_ID=your_canister_id_here
+REACT_APP_INTERNET_IDENTITY_CANISTER_ID=rdmx6-jaaaa-aaaah-qdrva-cai
+REACT_APP_DFX_NETWORK=local
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Usage
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### For Customers
+1. Connect with Internet Identity
+2. Enter delivery location
+3. Describe your food order in natural language
+4. Review AI-extracted order details
+5. Post order to ICP blockchain
+6. Wait for agent confirmation
+7. Pay agent directly on completion
+
+### For Delivery Agents
+1. Connect with Internet Identity
+2. Register as an agent on ICP blockchain
+3. Browse available delivery jobs
+4. Confirm jobs you want to take
+5. Complete deliveries and receive payments
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support and questions:
+- Create an issue in this repository
+- Join our community discussions
+- Check the [Internet Computer documentation](https://internetcomputer.org/docs/)
+
+## Roadmap
+
+- [ ] Mobile app development
+- [ ] Multi-language support
+- [ ] Advanced AI features
+- [ ] Integration with more payment methods
+- [ ] Enhanced DAO governance features
+- [ ] Cross-chain compatibility
+
+---
+
+Built with ❤️ on the Internet Computer Protocol

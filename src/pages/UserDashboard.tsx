@@ -5,7 +5,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { useWeb3 } from '../contexts/Web3Context';
+import { useICPWeb3 } from '../contexts/ICPWeb3Context';
 import { useToast } from '../hooks/use-toast';
 
 interface ExtractedOrderInfo {
@@ -42,7 +42,7 @@ const UserDashboard = () => {
   const [currentOrderDetails, setCurrentOrderDetails] = useState<any>(null);
   
   const navigate = useNavigate();
-  const { isConnected, walletAddress, connectWallet, postOrder, payAgent, isLoading, error } = useWeb3();
+  const { isConnected, walletAddress, connectWallet, postOrder, payAgent, isLoading, error } = useICPWeb3();
   const { toast } = useToast();
 
   // Listen for agent confirmations from localStorage
@@ -68,7 +68,7 @@ const UserDashboard = () => {
   // Display connection status
   useEffect(() => {
     if (isConnected && walletAddress) {
-      console.log('Wallet connected in UserDashboard:', walletAddress);
+      console.log('ICP wallet connected in UserDashboard:', walletAddress);
     }
   }, [isConnected, walletAddress]);
 
@@ -76,7 +76,7 @@ const UserDashboard = () => {
   useEffect(() => {
     if (error) {
       toast({
-        title: "Wallet Error",
+        title: "ICP Error",
         description: error,
         variant: "destructive"
       });
@@ -85,17 +85,17 @@ const UserDashboard = () => {
 
   const handleConnectWallet = async () => {
     try {
-      console.log('Connect wallet button clicked');
+      console.log('Connect ICP wallet button clicked');
       await connectWallet();
       toast({
-        title: "Wallet Connected!",
-        description: "You can now place orders and make payments",
+        title: "ICP Wallet Connected!",
+        description: "You can now place orders and make payments on Internet Computer",
       });
     } catch (error: any) {
-      console.error('Wallet connection failed:', error);
+      console.error('ICP wallet connection failed:', error);
       toast({
         title: "Connection Failed",
-        description: error.message || "Failed to connect wallet. Please try again.",
+        description: error.message || "Failed to connect ICP wallet. Please try again.",
         variant: "destructive"
       });
     }
@@ -183,8 +183,8 @@ const UserDashboard = () => {
     }
     if (!isConnected) {
       toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet first",
+        title: "ICP wallet not connected",
+        description: "Please connect your Internet Identity first",
         variant: "destructive"
       });
       return;
@@ -214,9 +214,9 @@ const UserDashboard = () => {
     if (!extractedInfo || !isConnected) return;
     
     try {
-      console.log('Posting order to blockchain:', extractedInfo);
+      console.log('Posting order to ICP blockchain:', extractedInfo);
       
-      // Post order to blockchain
+      // Post order to ICP blockchain
       const orderId = await postOrder(
         extractedInfo.restaurant,
         extractedInfo.dish,
@@ -274,7 +274,7 @@ const UserDashboard = () => {
         
         toast({
           title: "Order posted successfully!",
-          description: `Order ID: ${orderId} - Visible to delivery agents`,
+          description: `Order ID: ${orderId} - Visible to delivery agents on ICP`,
         });
       }
     } catch (error) {
@@ -288,7 +288,7 @@ const UserDashboard = () => {
   };
 
   const handlePayment = async () => {
-    console.log('Payment button clicked');
+    console.log('ICP Payment button clicked');
     console.log('Current order details:', currentOrderDetails);
     console.log('Agent confirmation:', agentConfirmation);
     console.log('Blockchain order ID:', blockchainOrderId);
@@ -337,14 +337,14 @@ const UserDashboard = () => {
     if (!isConnected || !walletAddress) {
       toast({
         title: "Payment Error",
-        description: "Wallet not connected",
+        description: "ICP wallet not connected",
         variant: "destructive"
       });
       return;
     }
     
     try {
-      console.log('Starting payment process...', { 
+      console.log('Starting ICP payment process...', { 
         orderId: blockchainOrderId, 
         amount: paymentAmount,
         agentName: agentConfirmation.agentName,
@@ -353,13 +353,13 @@ const UserDashboard = () => {
       
       toast({
         title: "Payment Processing",
-        description: "Please confirm the transaction in MetaMask",
+        description: "Please confirm the transaction in Internet Identity",
       });
       
-      // Send payment through Web3 with agent's wallet address
+      // Send payment through ICP with agent's wallet address
       const txHash = await payAgent(blockchainOrderId, paymentAmount, agentConfirmation.agentWallet);
       
-      console.log('Payment transaction successful:', txHash);
+      console.log('ICP payment transaction successful:', txHash);
       
       // Create payment confirmation for agent dashboard
       const paymentConfirmation = {
@@ -407,7 +407,7 @@ const UserDashboard = () => {
       
       toast({
         title: "Payment Successful! 🎉",
-        description: `${paymentAmount} ETH sent to ${agentConfirmation.agentName}. Transaction: ${txHash.slice(0, 10)}...`,
+        description: `${paymentAmount} ICP sent to ${agentConfirmation.agentName}. Transaction: ${txHash.slice(0, 10)}...`,
       });
       
       // Reset states after successful payment
@@ -421,7 +421,7 @@ const UserDashboard = () => {
       }, 3000);
       
     } catch (error) {
-      console.error('Payment failed:', error);
+      console.error('ICP payment failed:', error);
       
       let errorMessage = "Payment failed. Please try again.";
       if (error instanceof Error) {
@@ -458,19 +458,13 @@ const UserDashboard = () => {
                 className="flex items-center space-x-2"
               >
                 <Wallet size={16} />
-                <span>{isLoading ? 'Connecting...' : 'Connect Wallet'}</span>
+                <span>{isLoading ? 'Connecting...' : 'Connect Internet Identity'}</span>
               </Button>
-              {!window.ethereum && (
-                <div className="flex items-center space-x-1 text-red-400 text-xs">
-                  <AlertCircle size={12} />
-                  <span>MetaMask not detected</span>
-                </div>
-              )}
             </div>
           ) : (
             <div className="flex items-center space-x-2 text-green-400">
               <Wallet size={16} />
-              <span className="text-sm">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
+              <span className="text-sm">{walletAddress?.slice(0, 10)}...{walletAddress?.slice(-4)}</span>
             </div>
           )}
           <Button
@@ -490,28 +484,30 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      {/* MetaMask Installation Notice */}
-      {!window.ethereum && (
-        <Card className="card-dark border-red-500/50 bg-red-500/10">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-red-400">
-              <AlertCircle size={24} />
-              <span>MetaMask Required</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              To use this app, you need to install MetaMask wallet extension.
-            </p>
-            <Button
-              onClick={() => window.open('https://metamask.io/download/', '_blank')}
-              className="gradient-button"
-            >
-              Install MetaMask
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {/* ICP Information */}
+      <Card className="card-dark border-blue-500/50 bg-blue-500/10">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-blue-400">
+            <AlertCircle size={24} />
+            <span>Internet Computer Protocol</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            This app is now running on the Internet Computer blockchain. Connect with Internet Identity to get started.
+          </p>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Network</p>
+              <p className="font-medium">Internet Computer</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Authentication</p>
+              <p className="font-medium">Internet Identity</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* User Location Input */}
       <Card className="card-dark">
@@ -551,7 +547,7 @@ const UserDashboard = () => {
               <div>
                 <p className="font-semibold">{agentConfirmation.agentName}</p>
                 <p className="text-sm text-muted-foreground">Rating: {agentConfirmation.agentRating}/5</p>
-                <p className="text-xs text-muted-foreground">Wallet: {agentConfirmation.agentWallet?.slice(0, 10)}...</p>
+                <p className="text-xs text-muted-foreground">Principal: {agentConfirmation.agentWallet?.slice(0, 15)}...</p>
               </div>
             </div>
             <div className="bg-secondary/20 p-3 rounded-lg">
@@ -577,7 +573,7 @@ const UserDashboard = () => {
                     onChange={(e) => setPaymentAmount(e.target.value)}
                     className="w-24 h-8"
                   />
-                  <span className="text-sm font-medium">ETH</span>
+                  <span className="text-sm font-medium">ICP</span>
                 </div>
               </div>
             </div>
@@ -592,7 +588,7 @@ const UserDashboard = () => {
                   <span>Processing Payment...</span>
                 </div>
               ) : (
-                `Pay ${paymentAmount} ETH to ${agentConfirmation.agentName}`
+                `Pay ${paymentAmount} ICP to ${agentConfirmation.agentName}`
               )}
             </Button>
           </CardContent>
@@ -632,7 +628,7 @@ const UserDashboard = () => {
             ) : (
               <div className="flex items-center space-x-2">
                 <Send size={16} />
-                <span>{!isConnected ? 'Connect Wallet First' : 'Process Order'}</span>
+                <span>{!isConnected ? 'Connect Internet Identity First' : 'Process Order'}</span>
               </div>
             )}
           </Button>
@@ -678,7 +674,7 @@ const UserDashboard = () => {
                 onClick={confirmAndPostOrder}
                 className="gradient-button flex-1"
               >
-                Post Order for Delivery Agents
+                Post Order on ICP Blockchain
               </Button>
               <Button
                 variant="outline"
@@ -698,13 +694,13 @@ const UserDashboard = () => {
           <CardHeader>
             <CardTitle className="text-accent">Order Posted Successfully!</CardTitle>
             <CardDescription>
-              Your order is now visible to delivery agents. Waiting for confirmations...
+              Your order is now on the ICP blockchain. Waiting for confirmations...
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
-              <span>Delivery agents can now see your order</span>
+              <span>Delivery agents can now see your order on ICP</span>
             </div>
             <div className="p-3 bg-secondary/20 rounded-lg">
               <p className="text-sm font-medium mb-2">Order Details:</p>

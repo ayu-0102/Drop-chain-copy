@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
-import { useWeb3 } from '../contexts/Web3Context';
+import { useICPWeb3 } from '../contexts/ICPWeb3Context';
 import { useToast } from '../hooks/use-toast';
 import AIDeliveryEstimator from '../components/AIDeliveryEstimator';
 
@@ -35,7 +35,7 @@ const AgentDashboard = () => {
   const [selectedJob, setSelectedJob] = useState<DeliveryJob | null>(null);
   
   const navigate = useNavigate();
-  const { isConnected, walletAddress, connectWallet, registerAgent, confirmOrder, isLoading } = useWeb3();
+  const { isConnected, walletAddress, connectWallet, registerAgent, confirmOrder, isLoading } = useICPWeb3();
   const { toast } = useToast();
 
   const filters = ['All Jobs', 'Available', 'My Jobs', 'Completed', 'Payments'];
@@ -84,8 +84,8 @@ const AgentDashboard = () => {
 
     if (!isConnected) {
       toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet first",
+        title: "ICP wallet not connected",
+        description: "Please connect your Internet Identity first",
         variant: "destructive"
       });
       return;
@@ -95,7 +95,7 @@ const AgentDashboard = () => {
       const txHash = await registerAgent(agentName);
       toast({
         title: "Agent registered successfully!",
-        description: `Transaction: ${txHash.slice(0, 10)}...`,
+        description: `Transaction: ${txHash.slice(0, 10)}... on ICP blockchain`,
       });
     } catch (error) {
       console.error('Failed to register agent:', error);
@@ -118,8 +118,8 @@ const AgentDashboard = () => {
 
     if (!isConnected) {
       toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet first",
+        title: "ICP wallet not connected",
+        description: "Please connect your Internet Identity first",
         variant: "destructive"
       });
       return;
@@ -128,7 +128,7 @@ const AgentDashboard = () => {
     try {
       console.log('Confirming job:', jobId, 'by agent:', agentName);
       
-      // Confirm on blockchain
+      // Confirm on ICP blockchain
       const txHash = await confirmOrder(jobId);
       
       const job = availableJobs.find(j => j.id === jobId);
@@ -164,7 +164,7 @@ const AgentDashboard = () => {
 
       toast({
         title: "Job confirmed successfully!",
-        description: `Transaction: ${txHash.slice(0, 10)}... | Customer can now pay you!`,
+        description: `Transaction: ${txHash.slice(0, 10)}... | Customer can now pay you on ICP!`,
       });
 
       console.log('Job confirmed by:', agentName, 'Order ID:', jobId, 'Agent wallet:', walletAddress);
@@ -206,14 +206,14 @@ const AgentDashboard = () => {
           <CardContent className="space-y-3">
             <div className="bg-secondary/20 p-4 rounded-lg">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-lg">₹{parseFloat(payment.amount) * 83000} (~{payment.amount} ETH)</h4>
+                <h4 className="font-semibold text-lg">{payment.amount} ICP</h4>
                 <span className="text-sm text-muted-foreground">
                   {new Date(payment.timestamp).toLocaleString()}
                 </span>
               </div>
               
               <p className="text-sm mb-3">
-                <strong>{payment.customerName}</strong> sent you <strong>{payment.amount} ETH</strong> for Order #{payment.orderId}
+                <strong>{payment.customerName}</strong> sent you <strong>{payment.amount} ICP</strong> for Order #{payment.orderId}
               </p>
 
               {payment.orderDetails && (
@@ -230,35 +230,16 @@ const AgentDashboard = () => {
                   <p className="font-mono text-xs">{payment.txHash?.slice(0, 20)}...</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">From Wallet</p>
-                  <p className="font-mono text-xs">{payment.customerWallet?.slice(0, 10)}...</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Block Number</p>
-                  <p className="text-xs">{payment.blockNumber || 'Pending'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Gas Used</p>
-                  <p className="text-xs">{payment.gasUsed || '21000'}</p>
+                  <p className="text-muted-foreground">From Principal</p>
+                  <p className="font-mono text-xs">{payment.customerWallet?.slice(0, 15)}...</p>
                 </div>
               </div>
             </div>
             
             <div className="flex items-center justify-center">
               <span className="inline-flex items-center px-4 py-2 rounded-full text-sm bg-green-500/20 text-green-400 border border-green-500/30">
-                ✓ Payment Confirmed on Blockchain
+                ✓ Payment Confirmed on ICP Blockchain
               </span>
-            </div>
-            
-            <div className="text-center pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(`https://etherscan.io/tx/${payment.txHash}`, '_blank')}
-                className="text-xs"
-              >
-                View on Etherscan
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -269,7 +250,7 @@ const AgentDashboard = () => {
             <DollarSign size={48} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No payments received yet</p>
             <p className="text-sm text-muted-foreground mt-2">
-              Payments will appear here after customers complete their orders
+              Payments will appear here after customers complete their orders on ICP
             </p>
           </CardContent>
         </Card>
@@ -380,7 +361,7 @@ const AgentDashboard = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Delivery Jobs</h1>
-          <p className="text-muted-foreground">Browse and confirm delivery jobs from customers</p>
+          <p className="text-muted-foreground">Browse and confirm delivery jobs from customers on ICP</p>
         </div>
         <div className="flex items-center space-x-4">
           {!isConnected ? (
@@ -390,12 +371,12 @@ const AgentDashboard = () => {
               className="flex items-center space-x-2"
             >
               <Wallet size={16} />
-              <span>{isLoading ? 'Connecting...' : 'Connect Wallet'}</span>
+              <span>{isLoading ? 'Connecting...' : 'Connect Internet Identity'}</span>
             </Button>
           ) : (
             <div className="flex items-center space-x-2 text-green-400">
               <Wallet size={16} />
-              <span className="text-sm">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
+              <span className="text-sm">{walletAddress?.slice(0, 10)}...{walletAddress?.slice(-4)}</span>
             </div>
           )}
           <Button
@@ -421,7 +402,7 @@ const AgentDashboard = () => {
       <Card className="card-dark">
         <CardHeader>
           <CardTitle>Agent Information</CardTitle>
-          <CardDescription>Register as an agent on the blockchain</CardDescription>
+          <CardDescription>Register as an agent on the ICP blockchain</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Input
@@ -435,7 +416,7 @@ const AgentDashboard = () => {
             disabled={!isConnected || !agentName.trim() || isLoading}
             className="gradient-button"
           >
-            {isLoading ? 'Registering...' : 'Register on Blockchain'}
+            {isLoading ? 'Registering...' : 'Register on ICP Blockchain'}
           </Button>
         </CardContent>
       </Card>
@@ -482,7 +463,7 @@ const AgentDashboard = () => {
           <CardContent>
             <p className="text-muted-foreground mb-4">No jobs found in this category</p>
             <p className="text-sm text-muted-foreground">
-              {activeFilter === 'Available' ? 'Waiting for new delivery requests...' : 'You haven\'t confirmed any jobs yet.'}
+              {activeFilter === 'Available' ? 'Waiting for new delivery requests on ICP...' : 'You haven\'t confirmed any jobs yet.'}
             </p>
           </CardContent>
         </Card>

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "canisters": {
+    "delivery_platform": {
+      "type": "motoko",
+      "main": "src/contracts/DeliveryPlatform.mo"
+    },
+    "delivery_platform_assets": {
+      "type": "assets",
+      "source": ["dist/"]
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://ic0.app"],
+      "type": "persistent"
+    }
+  }
+}

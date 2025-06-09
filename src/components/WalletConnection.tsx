@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
@@ -33,7 +32,7 @@ const WalletConnection = () => {
             DeliverDAO
           </h1>
           <p className="text-muted-foreground">
-            Decentralized delivery platform cutting out middlemen
+            Decentralized delivery platform on Internet Computer
           </p>
         </div>
 
@@ -44,7 +43,7 @@ const WalletConnection = () => {
               <span>Choose Your Role</span>
             </CardTitle>
             <CardDescription>
-              Select how you want to use the platform
+              Connect with Internet Identity to get started
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -93,8 +92,14 @@ const WalletConnection = () => {
               disabled={!selectedRole || isConnecting}
               className="w-full gradient-button"
             >
-              {isConnecting ? 'Connecting...' : 'Connect Wallet & Continue'}
+              {isConnecting ? 'Connecting...' : 'Connect with Internet Identity'}
             </Button>
+            
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">
+                Powered by Internet Computer Protocol
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
