@@ -21,10 +21,13 @@ interface ExtractedOrderInfo {
 }
 
 interface AgentConfirmation {
+  orderId: string;
   agentName: string;
+  agentWallet: string;
   agentRating: number;
   eta: string;
   pickupTime: string;
+  confirmedAt: string;
 }
 
 const UserDashboard = () => {
@@ -36,6 +39,7 @@ const UserDashboard = () => {
   const [agentConfirmation, setAgentConfirmation] = useState<AgentConfirmation | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('0.01');
   const [blockchainOrderId, setBlockchainOrderId] = useState<string | null>(null);
+  const [currentOrderDetails, setCurrentOrderDetails] = useState<any>(null);
   
   const navigate = useNavigate();
   const { isConnected, walletAddress, connectWallet, postOrder, payAgent, isLoading, error } = useWeb3();
@@ -48,7 +52,9 @@ const UserDashboard = () => {
       if (confirmations) {
         const parsed = JSON.parse(confirmations);
         if (parsed.length > 0) {
-          setAgentConfirmation(parsed[0]);
+          const confirmation = parsed[0];
+          setAgentConfirmation(confirmation);
+          setBlockchainOrderId(confirmation.orderId);
           // Clear the confirmation after showing it
           localStorage.removeItem('agentConfirmations');
         }
@@ -213,6 +219,19 @@ const UserDashboard = () => {
       if (orderId) {
         setBlockchainOrderId(orderId);
         
+        // Store current order details for payment
+        const orderDetails = {
+          orderId: orderId,
+          restaurant: extractedInfo.restaurant,
+          dish: extractedInfo.dish,
+          quantity: extractedInfo.quantity,
+          deliveryLocation: extractedInfo.deliveryLocation,
+          customerWallet: walletAddress,
+          customerName: extractedInfo.userName,
+          paymentAmount: paymentAmount
+        };
+        setCurrentOrderDetails(orderDetails);
+        
         // Store in localStorage for local demo
         const existingOrders = localStorage.getItem('deliveryJobs');
         const orders = existingOrders ? JSON.parse(existingOrders) : [];
@@ -259,10 +278,46 @@ const UserDashboard = () => {
   };
 
   const handlePayment = async () => {
-    if (!blockchainOrderId || !agentConfirmation) {
+    console.log('Payment button clicked');
+    console.log('Current order details:', currentOrderDetails);
+    console.log('Agent confirmation:', agentConfirmation);
+    console.log('Blockchain order ID:', blockchainOrderId);
+    console.log('Payment amount:', paymentAmount);
+    
+    // Enhanced validation with better error messages
+    if (!blockchainOrderId) {
+      console.error('No blockchain order ID available');
       toast({
         title: "Payment Error",
-        description: "Order information not available",
+        description: "Order ID not found. Please try posting the order again.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!agentConfirmation) {
+      console.error('No agent confirmation available');
+      toast({
+        title: "Payment Error", 
+        description: "No agent has confirmed this order yet. Please wait for agent confirmation.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+      toast({
+        title: "Payment Error",
+        description: "Invalid payment amount",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!isConnected || !walletAddress) {
+      toast({
+        title: "Payment Error",
+        description: "Wallet not connected",
         variant: "destructive"
       });
       return;
@@ -272,7 +327,8 @@ const UserDashboard = () => {
       console.log('Starting payment process...', { 
         orderId: blockchainOrderId, 
         amount: paymentAmount,
-        agentName: agentConfirmation.agentName 
+        agentName: agentConfirmation.agentName,
+        agentWallet: agentConfirmation.agentWallet
       });
       
       toast({
@@ -280,7 +336,7 @@ const UserDashboard = () => {
         description: "Please confirm the transaction in MetaMask",
       });
       
-      // Send payment through Web3
+      // Send payment through Web3 with agent's wallet address
       const txHash = await payAgent(blockchainOrderId, paymentAmount);
       
       console.log('Payment transaction successful:', txHash);
@@ -288,15 +344,21 @@ const UserDashboard = () => {
       // Create payment confirmation for agent dashboard
       const paymentConfirmation = {
         orderId: blockchainOrderId,
-        customerName: extractedInfo?.userName || "John Doe",
+        customerName: extractedInfo?.userName || currentOrderDetails?.customerName || "John Doe",
         customerWallet: walletAddress,
         agentName: agentConfirmation.agentName,
+        agentWallet: agentConfirmation.agentWallet,
         amount: paymentAmount,
         txHash: txHash,
         timestamp: new Date().toISOString(),
         status: 'confirmed',
         blockNumber: Math.floor(Math.random() * 1000000), // Demo block number
-        gasUsed: '21000'
+        gasUsed: '21000',
+        orderDetails: {
+          restaurant: extractedInfo?.restaurant || currentOrderDetails?.restaurant,
+          dish: extractedInfo?.dish || currentOrderDetails?.dish,
+          location: extractedInfo?.deliveryLocation || currentOrderDetails?.deliveryLocation
+        }
       };
       
       // Store payment for agent to see
@@ -334,8 +396,9 @@ const UserDashboard = () => {
         setAgentConfirmation(null);
         setExtractedInfo(null);
         setBlockchainOrderId(null);
+        setCurrentOrderDetails(null);
         setPaymentAmount('0.01');
-      }, 2000);
+      }, 3000);
       
     } catch (error) {
       console.error('Payment failed:', error);
@@ -468,11 +531,12 @@ const UserDashboard = () => {
               <div>
                 <p className="font-semibold">{agentConfirmation.agentName}</p>
                 <p className="text-sm text-muted-foreground">Rating: {agentConfirmation.agentRating}/5</p>
+                <p className="text-xs text-muted-foreground">Wallet: {agentConfirmation.agentWallet?.slice(0, 10)}...</p>
               </div>
             </div>
             <div className="bg-secondary/20 p-3 rounded-lg">
               <p className="text-sm mb-2">
-                <strong>{agentConfirmation.agentName}</strong> has confirmed your order and is reaching to <strong>{extractedInfo?.restaurant}</strong> for pickup.
+                <strong>{agentConfirmation.agentName}</strong> has confirmed your order and is reaching to pickup location.
               </p>
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <span>Pickup in: {agentConfirmation.pickupTime}</span>

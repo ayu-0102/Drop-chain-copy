@@ -147,11 +147,11 @@ const AgentDashboard = () => {
         localStorage.setItem('deliveryJobs', JSON.stringify(updatedJobs));
       }
 
-      // Store agent confirmation for user to see
+      // Store agent confirmation for user to see (with agent's wallet address)
       const confirmation = {
         orderId: jobId,
         agentName: agentName,
-        agentWallet: walletAddress,
+        agentWallet: walletAddress, // Important: this is the agent's wallet address for payment
         agentRating: 4.8,
         eta: "35 minutes",
         pickupTime: "5 minutes",
@@ -165,7 +165,7 @@ const AgentDashboard = () => {
         description: `Transaction: ${txHash.slice(0, 10)}... | Customer can now pay you!`,
       });
 
-      console.log('Job confirmed by:', agentName, 'Order ID:', jobId);
+      console.log('Job confirmed by:', agentName, 'Order ID:', jobId, 'Agent wallet:', walletAddress);
     } catch (error) {
       console.error('Failed to confirm job:', error);
       toast({
@@ -213,6 +213,14 @@ const AgentDashboard = () => {
               <p className="text-sm mb-3">
                 <strong>{payment.customerName}</strong> sent you <strong>{payment.amount} ETH</strong> for Order #{payment.orderId}
               </p>
+
+              {payment.orderDetails && (
+                <div className="mb-3 p-2 bg-secondary/30 rounded">
+                  <p className="text-xs text-muted-foreground">Order Details:</p>
+                  <p className="text-sm">{payment.orderDetails.dish} from {payment.orderDetails.restaurant}</p>
+                  <p className="text-xs text-muted-foreground">Delivered to: {payment.orderDetails.location}</p>
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>

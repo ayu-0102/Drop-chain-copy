@@ -1,3 +1,4 @@
+
 import { ethers } from 'ethers';
 
 // Contract ABI - simplified for the main functions we need
@@ -16,8 +17,8 @@ export const DELIVERY_PLATFORM_ABI = [
   "event PaymentMade(uint256 indexed orderId, address indexed customer, address indexed agent, uint256 amount, bool isETH)"
 ];
 
-// Use a valid checksum address - this should be replaced with your deployed contract address
-export const CONTRACT_ADDRESS = "0x742d35Cc6635C0532925a3b8D186000000000000";
+// Demo contract address for visualization purposes
+export const CONTRACT_ADDRESS = "0x742d35Cc6635C0532925a3b8D186dD1432F0A9E2";
 
 export class Web3Service {
   private provider: ethers.BrowserProvider | null = null;
@@ -73,8 +74,7 @@ export class Web3Service {
       this.signer = await this.provider.getSigner();
       console.log('Signer created successfully');
       
-      // For demo purposes, we'll simulate a contract without actually deploying
-      // In production, replace CONTRACT_ADDRESS with your deployed contract address
+      // Create contract instance for demo purposes
       try {
         this.contract = new ethers.Contract(CONTRACT_ADDRESS, DELIVERY_PLATFORM_ABI, this.signer);
         console.log('Contract initialized successfully');
@@ -163,23 +163,35 @@ export class Web3Service {
       const amountInWei = ethers.parseEther(amountInEth);
       console.log('Amount in Wei:', amountInWei.toString());
       
-      // Create a demo transaction to simulate payment
+      // Get agent wallet address from localStorage (this is set when agent confirms order)
+      const confirmations = localStorage.getItem('agentConfirmations');
+      let agentWallet = CONTRACT_ADDRESS; // Default fallback
+      
+      if (confirmations) {
+        const parsed = JSON.parse(confirmations);
+        if (parsed.length > 0 && parsed[0].agentWallet) {
+          agentWallet = parsed[0].agentWallet;
+          console.log('Using agent wallet from confirmation:', agentWallet);
+        }
+      }
+      
+      // For demo purposes, create a transaction to the agent's address
       const transaction = {
-        to: CONTRACT_ADDRESS, // Demo recipient address
+        to: agentWallet,
         value: amountInWei,
         gasLimit: 21000,
       };
       
-      console.log('Sending transaction:', transaction);
+      console.log('Sending payment transaction:', transaction);
       
       // Send the actual MetaMask transaction
       const tx = await this.signer.sendTransaction(transaction);
-      console.log('Transaction sent:', tx.hash);
+      console.log('Payment transaction sent:', tx.hash);
       
       // Wait for transaction confirmation
       console.log('Waiting for transaction confirmation...');
       const receipt = await tx.wait();
-      console.log('Transaction confirmed:', receipt);
+      console.log('Payment transaction confirmed:', receipt);
       
       return tx.hash;
     } catch (error) {
