@@ -196,6 +196,16 @@ const UserDashboard = () => {
     setTimeout(() => {
       const extracted = extractInfoFromPrompt(prompt);
       setExtractedInfo(extracted);
+      setCurrentOrderDetails({
+        orderId: extracted.orderId,
+        restaurant: extracted.restaurant,
+        dish: extracted.dish,
+        quantity: extracted.quantity,
+        deliveryLocation: extracted.deliveryLocation,
+        customerWallet: walletAddress,
+        customerName: extracted.userName,
+        paymentAmount: paymentAmount
+      });
       setIsProcessing(false);
     }, 3000);
   };
@@ -219,7 +229,7 @@ const UserDashboard = () => {
       if (orderId) {
         setBlockchainOrderId(orderId);
         
-        // Store current order details for payment
+        // Update current order details with blockchain order ID
         const orderDetails = {
           orderId: orderId,
           restaurant: extractedInfo.restaurant,
@@ -305,6 +315,16 @@ const UserDashboard = () => {
       return;
     }
     
+    if (!agentConfirmation.agentWallet) {
+      console.error('No agent wallet address available');
+      toast({
+        title: "Payment Error",
+        description: "Agent wallet address not found. Please wait for agent to reconnect.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       toast({
         title: "Payment Error",
@@ -337,7 +357,7 @@ const UserDashboard = () => {
       });
       
       // Send payment through Web3 with agent's wallet address
-      const txHash = await payAgent(blockchainOrderId, paymentAmount);
+      const txHash = await payAgent(blockchainOrderId, paymentAmount, agentConfirmation.agentWallet);
       
       console.log('Payment transaction successful:', txHash);
       

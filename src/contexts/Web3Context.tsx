@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { web3Service } from '../utils/web3';
 
@@ -9,7 +8,7 @@ interface Web3ContextType {
   registerAgent: (name: string) => Promise<string>;
   postOrder: (restaurant: string, dish: string, quantity: number, pickup: string, drop: string, amount: string) => Promise<string | null>;
   confirmOrder: (orderId: string) => Promise<string>;
-  payAgent: (orderId: string, amount: string) => Promise<string>;
+  payAgent: (orderId: string, amount: string, agentWalletAddress: string) => Promise<string>;
   isLoading: boolean;
   error: string | null;
 }
@@ -145,11 +144,11 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     }
   };
 
-  const payAgent = async (orderId: string, amount: string) => {
+  const payAgent = async (orderId: string, amount: string, agentWalletAddress: string) => {
     try {
       setIsLoading(true);
       setError(null);
-      return await web3Service.payAgent(orderId, amount);
+      return await web3Service.payAgent(orderId, amount, agentWalletAddress);
     } catch (error: any) {
       setError(error.message || 'Failed to pay agent');
       throw error;

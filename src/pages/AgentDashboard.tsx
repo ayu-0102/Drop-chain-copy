@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import { useWeb3 } from '../contexts/Web3Context';
 import { useToast } from '../hooks/use-toast';
+import AIDeliveryEstimator from '../components/AIDeliveryEstimator';
 
 interface DeliveryJob {
   id: string;
@@ -31,6 +32,7 @@ const AgentDashboard = () => {
   const [confirmedJobs, setConfirmedJobs] = useState<DeliveryJob[]>([]);
   const [agentName, setAgentName] = useState('');
   const [paymentNotifications, setPaymentNotifications] = useState<any[]>([]);
+  const [selectedJob, setSelectedJob] = useState<DeliveryJob | null>(null);
   
   const navigate = useNavigate();
   const { isConnected, walletAddress, connectWallet, registerAgent, confirmOrder, isLoading } = useWeb3();
@@ -276,7 +278,13 @@ const AgentDashboard = () => {
   );
 
   const JobCard = ({ job }: { job: DeliveryJob }) => (
-    <Card key={job.id} className="card-dark hover:bg-card/90 transition-all duration-200">
+    <Card 
+      key={job.id} 
+      className={`card-dark hover:bg-card/90 transition-all duration-200 cursor-pointer ${
+        selectedJob?.id === job.id ? 'border-blue-500/50 bg-blue-500/10' : ''
+      }`}
+      onClick={() => setSelectedJob(job)}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -348,7 +356,10 @@ const AgentDashboard = () => {
           
           {job.status === 'available' ? (
             <Button 
-              onClick={() => handleConfirmJob(job.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleConfirmJob(job.id);
+              }}
               className="gradient-button"
             >
               Confirm Job
@@ -428,6 +439,15 @@ const AgentDashboard = () => {
           </Button>
         </CardContent>
       </Card>
+
+      {/* AI Delivery Estimator */}
+      {selectedJob && (
+        <AIDeliveryEstimator
+          pickupLocation={selectedJob.pickupLocation}
+          dropLocation={selectedJob.dropLocation}
+          distance={selectedJob.distance}
+        />
+      )}
 
       {/* Filters */}
       <div className="flex space-x-3 overflow-x-auto">

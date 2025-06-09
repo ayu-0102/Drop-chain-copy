@@ -1,4 +1,3 @@
-
 import { ethers } from 'ethers';
 
 // Contract ABI - simplified for the main functions we need
@@ -153,31 +152,25 @@ export class Web3Service {
     return mockTxHash;
   }
 
-  async payAgent(orderId: string, amountInEth: string) {
+  async payAgent(orderId: string, amountInEth: string, agentWalletAddress: string) {
     if (!this.signer) throw new Error('Wallet not connected');
     
-    console.log('Initiating payment to agent...', { orderId, amountInEth });
+    console.log('Initiating payment to agent...', { orderId, amountInEth, agentWalletAddress });
     
     try {
+      // Validate the agent wallet address format
+      if (!agentWalletAddress || !ethers.isAddress(agentWalletAddress)) {
+        throw new Error('Invalid agent wallet address');
+      }
+
       // Convert ETH amount to Wei
       const amountInWei = ethers.parseEther(amountInEth);
       console.log('Amount in Wei:', amountInWei.toString());
+      console.log('Sending to agent wallet:', agentWalletAddress);
       
-      // Get agent wallet address from localStorage (this is set when agent confirms order)
-      const confirmations = localStorage.getItem('agentConfirmations');
-      let agentWallet = CONTRACT_ADDRESS; // Default fallback
-      
-      if (confirmations) {
-        const parsed = JSON.parse(confirmations);
-        if (parsed.length > 0 && parsed[0].agentWallet) {
-          agentWallet = parsed[0].agentWallet;
-          console.log('Using agent wallet from confirmation:', agentWallet);
-        }
-      }
-      
-      // For demo purposes, create a transaction to the agent's address
+      // Create a transaction to the agent's address
       const transaction = {
-        to: agentWallet,
+        to: agentWalletAddress,
         value: amountInWei,
         gasLimit: 21000,
       };
