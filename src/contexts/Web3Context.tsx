@@ -11,6 +11,7 @@ interface Web3ContextType {
   confirmOrder: (orderId: string) => Promise<string>;
   payAgent: (orderId: string, amount: string) => Promise<string>;
   isLoading: boolean;
+  error: string | null;
 }
 
 const Web3Context = createContext<Web3ContextType | undefined>(undefined);
@@ -31,6 +32,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     checkConnection();
@@ -39,12 +41,17 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
 
   const checkConnection = async () => {
     try {
-      const initialized = await web3Service.initialize();
-      if (initialized) {
-        const address = await web3Service.getWalletAddress();
-        if (address) {
-          setWalletAddress(address);
-          setIsConnected(true);
+      console.log('Checking existing wallet connection...');
+      const connected = await web3Service.checkConnection();
+      if (connected) {
+        const initialized = await web3Service.initialize();
+        if (initialized) {
+          const address = await web3Service.getWalletAddress();
+          if (address) {
+            setWalletAddress(address);
+            setIsConnected(true);
+            console.log('Existing connection found:', address);
+          }
         }
       }
     } catch (error) {
@@ -53,15 +60,23 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   };
 
   const setupEventListeners = () => {
-    if (window.ethereum) {
+    if (typeof window !== 'undefined' && window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        console.log('Accounts changed:', accounts);
         if (accounts.length === 0) {
           setIsConnected(false);
           setWalletAddress(null);
+          setError('Wallet disconnected');
         } else {
           setWalletAddress(accounts[0]);
           setIsConnected(true);
+          setError(null);
         }
+      });
+
+      window.ethereum.on('chainChanged', () => {
+        console.log('Chain changed, reloading...');
+        window.location.reload();
       });
     }
   };
@@ -69,11 +84,22 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const connectWallet = async () => {
     try {
       setIsLoading(true);
+      setError(null);
+      console.log('Starting wallet connection process...');
+      
       const address = await web3Service.connectWallet();
-      setWalletAddress(address || null);
-      setIsConnected(!!address);
-    } catch (error) {
+      if (address) {
+        setWalletAddress(address);
+        setIsConnected(true);
+        console.log('Wallet connected successfully:', address);
+      } else {
+        throw new Error('Failed to get wallet address');
+      }
+    } catch (error: any) {
       console.error('Failed to connect wallet:', error);
+      setError(error.message || 'Failed to connect wallet');
+      setIsConnected(false);
+      setWalletAddress(null);
       throw error;
     } finally {
       setIsLoading(false);
@@ -83,7 +109,11 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const registerAgent = async (name: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       return await web3Service.registerAgent(name);
+    } catch (error: any) {
+      setError(error.message || 'Failed to register agent');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +122,11 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const postOrder = async (restaurant: string, dish: string, quantity: number, pickup: string, drop: string, amount: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       return await web3Service.postOrder(restaurant, dish, quantity, pickup, drop, amount);
+    } catch (error: any) {
+      setError(error.message || 'Failed to post order');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +135,11 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const confirmOrder = async (orderId: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       return await web3Service.confirmOrder(orderId);
+    } catch (error: any) {
+      setError(error.message || 'Failed to confirm order');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +148,11 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const payAgent = async (orderId: string, amount: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       return await web3Service.payAgent(orderId, amount);
+    } catch (error: any) {
+      setError(error.message || 'Failed to pay agent');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +166,8 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     postOrder,
     confirmOrder,
     payAgent,
-    isLoading
+    isLoading,
+    error
   };
 
   return (

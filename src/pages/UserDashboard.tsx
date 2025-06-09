@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Send, MapPin, Clock, Bot, History, User, CheckCircle, Wallet } from 'lucide-react';
+import { Send, MapPin, Clock, Bot, History, User, CheckCircle, Wallet, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
@@ -38,7 +38,7 @@ const UserDashboard = () => {
   const [blockchainOrderId, setBlockchainOrderId] = useState<string | null>(null);
   
   const navigate = useNavigate();
-  const { isConnected, walletAddress, connectWallet, postOrder, payAgent, isLoading } = useWeb3();
+  const { isConnected, walletAddress, connectWallet, postOrder, payAgent, isLoading, error } = useWeb3();
   const { toast } = useToast();
 
   // Listen for agent confirmations from localStorage
@@ -58,6 +58,42 @@ const UserDashboard = () => {
     const interval = setInterval(checkForConfirmations, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Display connection status
+  useEffect(() => {
+    if (isConnected && walletAddress) {
+      console.log('Wallet connected in UserDashboard:', walletAddress);
+    }
+  }, [isConnected, walletAddress]);
+
+  // Show error toast when there's a Web3 error
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Wallet Error",
+        description: error,
+        variant: "destructive"
+      });
+    }
+  }, [error, toast]);
+
+  const handleConnectWallet = async () => {
+    try {
+      console.log('Connect wallet button clicked');
+      await connectWallet();
+      toast({
+        title: "Wallet Connected!",
+        description: "You can now place orders and make payments",
+      });
+    } catch (error: any) {
+      console.error('Wallet connection failed:', error);
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to connect wallet. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const recentOrders = [
     {
@@ -132,7 +168,11 @@ const UserDashboard = () => {
   const handleSubmitPrompt = async () => {
     if (!prompt.trim()) return;
     if (!userLocation.trim()) {
-      alert('Please enter your delivery location first!');
+      toast({
+        title: "Location Required",
+        description: "Please enter your delivery location first!",
+        variant: "destructive"
+      });
       return;
     }
     if (!isConnected) {
@@ -268,14 +308,22 @@ const UserDashboard = () => {
         </div>
         <div className="flex items-center space-x-4">
           {!isConnected ? (
-            <Button
-              onClick={connectWallet}
-              disabled={isLoading}
-              className="flex items-center space-x-2"
-            >
-              <Wallet size={16} />
-              <span>{isLoading ? 'Connecting...' : 'Connect Wallet'}</span>
-            </Button>
+            <div className="flex flex-col items-end space-y-2">
+              <Button
+                onClick={handleConnectWallet}
+                disabled={isLoading}
+                className="flex items-center space-x-2"
+              >
+                <Wallet size={16} />
+                <span>{isLoading ? 'Connecting...' : 'Connect Wallet'}</span>
+              </Button>
+              {!window.ethereum && (
+                <div className="flex items-center space-x-1 text-red-400 text-xs">
+                  <AlertCircle size={12} />
+                  <span>MetaMask not detected</span>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex items-center space-x-2 text-green-400">
               <Wallet size={16} />
@@ -298,6 +346,29 @@ const UserDashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* MetaMask Installation Notice */}
+      {!window.ethereum && (
+        <Card className="card-dark border-red-500/50 bg-red-500/10">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-red-400">
+              <AlertCircle size={24} />
+              <span>MetaMask Required</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              To use this app, you need to install MetaMask wallet extension.
+            </p>
+            <Button
+              onClick={() => window.open('https://metamask.io/download/', '_blank')}
+              className="gradient-button"
+            >
+              Install MetaMask
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* User Location Input */}
       <Card className="card-dark">
@@ -394,12 +465,12 @@ const UserDashboard = () => {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             className="min-h-[100px] input-dark"
-            disabled={isProcessing || orderPosted}
+            disabled={isProcessing || orderPosted || !isConnected}
           />
           
           <Button
             onClick={handleSubmitPrompt}
-            disabled={!prompt.trim() || !userLocation.trim() || isProcessing || orderPosted}
+            disabled={!prompt.trim() || !userLocation.trim() || isProcessing || orderPosted || !isConnected}
             className="gradient-button w-full"
           >
             {isProcessing ? (
@@ -410,7 +481,7 @@ const UserDashboard = () => {
             ) : (
               <div className="flex items-center space-x-2">
                 <Send size={16} />
-                <span>Process Order</span>
+                <span>{!isConnected ? 'Connect Wallet First' : 'Process Order'}</span>
               </div>
             )}
           </Button>

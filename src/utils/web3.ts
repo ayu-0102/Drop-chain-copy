@@ -26,29 +26,73 @@ export class Web3Service {
   private contract: ethers.Contract | null = null;
 
   async initialize() {
-    if (typeof window.ethereum !== 'undefined') {
-      this.provider = new ethers.BrowserProvider(window.ethereum);
-      this.signer = await this.provider.getSigner();
-      this.contract = new ethers.Contract(CONTRACT_ADDRESS, DELIVERY_PLATFORM_ABI, this.signer);
-      return true;
+    console.log('Initializing Web3Service...');
+    
+    if (typeof window !== 'undefined' && window.ethereum) {
+      console.log('MetaMask detected');
+      try {
+        this.provider = new ethers.BrowserProvider(window.ethereum);
+        console.log('Provider created successfully');
+        return true;
+      } catch (error) {
+        console.error('Error creating provider:', error);
+        return false;
+      }
+    } else {
+      console.log('MetaMask not detected');
+      return false;
     }
-    return false;
   }
 
   async connectWallet() {
-    if (!window.ethereum) {
-      throw new Error('MetaMask not installed');
+    console.log('Attempting to connect wallet...');
+    
+    if (typeof window === 'undefined' || !window.ethereum) {
+      throw new Error('MetaMask not installed. Please install MetaMask to continue.');
     }
 
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
-    await this.initialize();
-    return await this.signer?.getAddress();
+    try {
+      // Request account access
+      console.log('Requesting account access...');
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      console.log('Accounts received:', accounts);
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found. Please connect your MetaMask wallet.');
+      }
+
+      // Initialize provider and signer
+      await this.initialize();
+      
+      if (!this.provider) {
+        throw new Error('Failed to initialize provider');
+      }
+
+      this.signer = await this.provider.getSigner();
+      console.log('Signer created successfully');
+      
+      this.contract = new ethers.Contract(CONTRACT_ADDRESS, DELIVERY_PLATFORM_ABI, this.signer);
+      console.log('Contract initialized successfully');
+      
+      const address = await this.signer.getAddress();
+      console.log('Wallet connected:', address);
+      
+      return address;
+    } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      throw error;
+    }
   }
 
   async registerAgent(name: string) {
     if (!this.contract) throw new Error('Contract not initialized');
     
+    console.log('Registering agent:', name);
     const tx = await this.contract.registerAgent(name);
+    console.log('Agent registration transaction:', tx.hash);
     await tx.wait();
     return tx.hash;
   }
@@ -63,6 +107,8 @@ export class Web3Service {
   ) {
     if (!this.contract) throw new Error('Contract not initialized');
     
+    console.log('Posting order:', { restaurant, dish, quantity, pickupLocation, dropLocation, amountInEth });
+    
     const tx = await this.contract.postOrder(
       restaurant,
       dish,
@@ -72,6 +118,7 @@ export class Web3Service {
       { value: ethers.parseEther(amountInEth) }
     );
     
+    console.log('Order post transaction:', tx.hash);
     const receipt = await tx.wait();
     
     // Extract order ID from events
@@ -86,7 +133,9 @@ export class Web3Service {
 
     if (orderPostedEvent) {
       const parsed = this.contract.interface.parseLog(orderPostedEvent);
-      return parsed?.args[0].toString(); // orderId
+      const orderId = parsed?.args[0].toString();
+      console.log('Order posted with ID:', orderId);
+      return orderId;
     }
     
     return null;
@@ -95,7 +144,9 @@ export class Web3Service {
   async confirmOrder(orderId: string) {
     if (!this.contract) throw new Error('Contract not initialized');
     
+    console.log('Confirming order:', orderId);
     const tx = await this.contract.confirmOrder(orderId);
+    console.log('Order confirmation transaction:', tx.hash);
     await tx.wait();
     return tx.hash;
   }
@@ -103,10 +154,13 @@ export class Web3Service {
   async payAgent(orderId: string, amountInEth: string) {
     if (!this.contract) throw new Error('Contract not initialized');
     
+    console.log('Paying agent for order:', orderId, 'Amount:', amountInEth);
+    
     const tx = await this.contract.payAgent(orderId, {
       value: ethers.parseEther(amountInEth)
     });
     
+    console.log('Payment transaction:', tx.hash);
     await tx.wait();
     return tx.hash;
   }
@@ -127,6 +181,7 @@ export class Web3Service {
     if (!this.contract) throw new Error('Contract not initialized');
     
     this.contract.on('PaymentMade', (orderId, customer, agent, amount, isETH, event) => {
+      console.log('Payment event received:', { orderId: orderId.toString(), customer, agent, amount: ethers.formatEther(amount), isETH });
       callback({
         orderId: orderId.toString(),
         customer,
@@ -139,8 +194,31 @@ export class Web3Service {
   }
 
   async getWalletAddress() {
-    if (!this.signer) return null;
-    return await this.signer.getAddress();
+    if (!this.signer) {
+      console.log('No signer available');
+      return null;
+    }
+    try {
+      const address = await this.signer.getAddress();
+      console.log('Current wallet address:', address);
+      return address;
+    } catch (error) {
+      console.error('Error getting wallet address:', error);
+      return null;
+    }
+  }
+
+  async checkConnection() {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        return accounts && accounts.length > 0;
+      } catch (error) {
+        console.error('Error checking connection:', error);
+        return false;
+      }
+    }
+    return false;
   }
 }
 
