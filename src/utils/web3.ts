@@ -1,4 +1,3 @@
-
 import { ethers } from 'ethers';
 
 // Contract ABI - simplified for the main functions we need
@@ -157,21 +156,35 @@ export class Web3Service {
   async payAgent(orderId: string, amountInEth: string) {
     if (!this.signer) throw new Error('Wallet not connected');
     
-    console.log('Paying agent for order:', orderId, 'Amount:', amountInEth);
+    console.log('Initiating payment to agent...', { orderId, amountInEth });
     
     try {
-      // For demo purposes, simulate payment transaction
-      const mockTxHash = '0x' + Math.random().toString(16).substring(2, 66);
+      // Convert ETH amount to Wei
+      const amountInWei = ethers.parseEther(amountInEth);
+      console.log('Amount in Wei:', amountInWei.toString());
       
-      console.log('Mock payment transaction:', mockTxHash);
+      // Create a demo transaction to simulate payment
+      const transaction = {
+        to: CONTRACT_ADDRESS, // Demo recipient address
+        value: amountInWei,
+        gasLimit: 21000,
+      };
       
-      // Simulate delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('Sending transaction:', transaction);
       
-      return mockTxHash;
+      // Send the actual MetaMask transaction
+      const tx = await this.signer.sendTransaction(transaction);
+      console.log('Transaction sent:', tx.hash);
+      
+      // Wait for transaction confirmation
+      console.log('Waiting for transaction confirmation...');
+      const receipt = await tx.wait();
+      console.log('Transaction confirmed:', receipt);
+      
+      return tx.hash;
     } catch (error) {
-      console.error('Error making payment:', error);
-      throw new Error('Failed to send payment');
+      console.error('Payment transaction failed:', error);
+      throw new Error(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

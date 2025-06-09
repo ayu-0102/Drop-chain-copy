@@ -198,29 +198,57 @@ const AgentDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-green-400">
               <DollarSign size={24} />
-              <span>Payment Received!</span>
+              <span>Payment Received! 🎉</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="bg-secondary/20 p-3 rounded-lg">
-              <p className="text-sm mb-2">
-                <strong>{payment.customerName}</strong> sent you <strong>{payment.amount} ETH</strong>
-              </p>
-              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                <span>Order ID: {payment.orderId}</span>
-                <span>•</span>
-                <span>{new Date(payment.timestamp).toLocaleString()}</span>
+            <div className="bg-secondary/20 p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-lg">₹{parseFloat(payment.amount) * 83000} (~{payment.amount} ETH)</h4>
+                <span className="text-sm text-muted-foreground">
+                  {new Date(payment.timestamp).toLocaleString()}
+                </span>
               </div>
-              <div className="mt-2 p-2 bg-secondary/30 rounded text-xs">
-                <p>Transaction: {payment.txHash?.slice(0, 20)}...</p>
-                <p>From: {payment.customerWallet?.slice(0, 10)}...</p>
-                <p className="text-green-400 font-medium">Status: {payment.status}</p>
+              
+              <p className="text-sm mb-3">
+                <strong>{payment.customerName}</strong> sent you <strong>{payment.amount} ETH</strong> for Order #{payment.orderId}
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Transaction Hash</p>
+                  <p className="font-mono text-xs">{payment.txHash?.slice(0, 20)}...</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">From Wallet</p>
+                  <p className="font-mono text-xs">{payment.customerWallet?.slice(0, 10)}...</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Block Number</p>
+                  <p className="text-xs">{payment.blockNumber || 'Pending'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Gas Used</p>
+                  <p className="text-xs">{payment.gasUsed || '21000'}</p>
+                </div>
               </div>
             </div>
-            <div className="text-center">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
+            
+            <div className="flex items-center justify-center">
+              <span className="inline-flex items-center px-4 py-2 rounded-full text-sm bg-green-500/20 text-green-400 border border-green-500/30">
                 ✓ Payment Confirmed on Blockchain
               </span>
+            </div>
+            
+            <div className="text-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`https://etherscan.io/tx/${payment.txHash}`, '_blank')}
+                className="text-xs"
+              >
+                View on Etherscan
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -230,7 +258,9 @@ const AgentDashboard = () => {
           <CardContent>
             <DollarSign size={48} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No payments received yet</p>
-            <p className="text-sm text-muted-foreground mt-2">Payments will appear here after customers pay for confirmed orders</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Payments will appear here after customers complete their orders
+            </p>
           </CardContent>
         </Card>
       )}

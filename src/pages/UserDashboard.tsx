@@ -259,14 +259,33 @@ const UserDashboard = () => {
   };
 
   const handlePayment = async () => {
-    if (!blockchainOrderId || !agentConfirmation) return;
+    if (!blockchainOrderId || !agentConfirmation) {
+      toast({
+        title: "Payment Error",
+        description: "Order information not available",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
-      console.log('Initiating payment...', { orderId: blockchainOrderId, amount: paymentAmount });
+      console.log('Starting payment process...', { 
+        orderId: blockchainOrderId, 
+        amount: paymentAmount,
+        agentName: agentConfirmation.agentName 
+      });
       
+      toast({
+        title: "Payment Processing",
+        description: "Please confirm the transaction in MetaMask",
+      });
+      
+      // Send payment through Web3
       const txHash = await payAgent(blockchainOrderId, paymentAmount);
       
-      // Store payment confirmation for agent to see
+      console.log('Payment transaction successful:', txHash);
+      
+      // Create payment confirmation for agent dashboard
       const paymentConfirmation = {
         orderId: blockchainOrderId,
         customerName: extractedInfo?.userName || "John Doe",
@@ -275,42 +294,66 @@ const UserDashboard = () => {
         amount: paymentAmount,
         txHash: txHash,
         timestamp: new Date().toISOString(),
-        status: 'completed'
+        status: 'confirmed',
+        blockNumber: Math.floor(Math.random() * 1000000), // Demo block number
+        gasUsed: '21000'
       };
       
+      // Store payment for agent to see
       const existingPayments = localStorage.getItem('agentPayments');
       const payments = existingPayments ? JSON.parse(existingPayments) : [];
       payments.unshift(paymentConfirmation);
       localStorage.setItem('agentPayments', JSON.stringify(payments));
       
-      // Update order status
+      // Update order status to completed
       const existingOrders = localStorage.getItem('deliveryJobs');
       if (existingOrders) {
         const orders = JSON.parse(existingOrders);
         const updatedOrders = orders.map((order: any) => 
           order.id === blockchainOrderId 
-            ? { ...order, status: 'completed', paidAmount: paymentAmount, txHash: txHash }
+            ? { 
+                ...order, 
+                status: 'completed', 
+                paidAmount: paymentAmount, 
+                txHash: txHash,
+                completedAt: new Date().toISOString()
+              }
             : order
         );
         localStorage.setItem('deliveryJobs', JSON.stringify(updatedOrders));
       }
       
       toast({
-        title: "Payment sent successfully!",
-        description: `${paymentAmount} ETH sent to ${agentConfirmation.agentName}`,
+        title: "Payment Successful! 🎉",
+        description: `${paymentAmount} ETH sent to ${agentConfirmation.agentName}. Transaction: ${txHash.slice(0, 10)}...`,
       });
       
       // Reset states after successful payment
-      setOrderPosted(false);
-      setAgentConfirmation(null);
-      setExtractedInfo(null);
-      setBlockchainOrderId(null);
+      setTimeout(() => {
+        setOrderPosted(false);
+        setAgentConfirmation(null);
+        setExtractedInfo(null);
+        setBlockchainOrderId(null);
+        setPaymentAmount('0.01');
+      }, 2000);
       
     } catch (error) {
       console.error('Payment failed:', error);
+      
+      let errorMessage = "Payment failed. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('user rejected')) {
+          errorMessage = "Transaction was cancelled by user";
+        } else if (error.message.includes('insufficient funds')) {
+          errorMessage = "Insufficient funds for transaction";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
-        title: "Payment failed",
-        description: error instanceof Error ? error.message : "Please try again",
+        title: "Payment Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -457,9 +500,16 @@ const UserDashboard = () => {
             <Button 
               className="w-full gradient-button"
               onClick={handlePayment}
-              disabled={!isConnected || isLoading}
+              disabled={!isConnected || isLoading || !paymentAmount || parseFloat(paymentAmount) <= 0}
             >
-              {isLoading ? 'Processing...' : `Pay ${paymentAmount} ETH to ${agentConfirmation.agentName}`}
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Processing Payment...</span>
+                </div>
+              ) : (
+                `Pay ${paymentAmount} ETH to ${agentConfirmation.agentName}`
+              )}
             </Button>
           </CardContent>
         </Card>
