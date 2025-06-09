@@ -213,7 +213,7 @@ const UserDashboard = () => {
       if (orderId) {
         setBlockchainOrderId(orderId);
         
-        // Also store in localStorage for local demo
+        // Store in localStorage for local demo
         const existingOrders = localStorage.getItem('deliveryJobs');
         const orders = existingOrders ? JSON.parse(existingOrders) : [];
         
@@ -233,7 +233,8 @@ const UserDashboard = () => {
           userName: extractedInfo.userName,
           userId: extractedInfo.userId,
           status: 'available',
-          paymentAmount: paymentAmount
+          paymentAmount: paymentAmount,
+          walletAddress: walletAddress
         };
         
         orders.unshift(newJob);
@@ -244,14 +245,14 @@ const UserDashboard = () => {
         
         toast({
           title: "Order posted successfully!",
-          description: `Order posted to blockchain with ID: ${orderId}`,
+          description: `Order ID: ${orderId} - Visible to delivery agents`,
         });
       }
     } catch (error) {
       console.error('Failed to post order:', error);
       toast({
         title: "Failed to post order",
-        description: "Please try again",
+        description: error instanceof Error ? error.message : "Please try again",
         variant: "destructive"
       });
     }
@@ -261,22 +262,38 @@ const UserDashboard = () => {
     if (!blockchainOrderId || !agentConfirmation) return;
     
     try {
+      console.log('Initiating payment...', { orderId: blockchainOrderId, amount: paymentAmount });
+      
       const txHash = await payAgent(blockchainOrderId, paymentAmount);
       
       // Store payment confirmation for agent to see
       const paymentConfirmation = {
         orderId: blockchainOrderId,
         customerName: extractedInfo?.userName || "John Doe",
+        customerWallet: walletAddress,
         agentName: agentConfirmation.agentName,
         amount: paymentAmount,
         txHash: txHash,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        status: 'completed'
       };
       
       const existingPayments = localStorage.getItem('agentPayments');
       const payments = existingPayments ? JSON.parse(existingPayments) : [];
       payments.unshift(paymentConfirmation);
       localStorage.setItem('agentPayments', JSON.stringify(payments));
+      
+      // Update order status
+      const existingOrders = localStorage.getItem('deliveryJobs');
+      if (existingOrders) {
+        const orders = JSON.parse(existingOrders);
+        const updatedOrders = orders.map((order: any) => 
+          order.id === blockchainOrderId 
+            ? { ...order, status: 'completed', paidAmount: paymentAmount, txHash: txHash }
+            : order
+        );
+        localStorage.setItem('deliveryJobs', JSON.stringify(updatedOrders));
+      }
       
       toast({
         title: "Payment sent successfully!",
@@ -293,7 +310,7 @@ const UserDashboard = () => {
       console.error('Payment failed:', error);
       toast({
         title: "Payment failed",
-        description: "Please try again",
+        description: error instanceof Error ? error.message : "Please try again",
         variant: "destructive"
       });
     }

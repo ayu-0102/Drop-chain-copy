@@ -107,7 +107,10 @@ const AgentDashboard = () => {
 
   const handleConfirmJob = async (jobId: string) => {
     if (!agentName.trim()) {
-      alert('Please enter your name first!');
+      toast({
+        title: "Please enter your name first!",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -121,6 +124,8 @@ const AgentDashboard = () => {
     }
 
     try {
+      console.log('Confirming job:', jobId, 'by agent:', agentName);
+      
       // Confirm on blockchain
       const txHash = await confirmOrder(jobId);
       
@@ -128,7 +133,7 @@ const AgentDashboard = () => {
       if (!job) return;
 
       // Move job from available to confirmed
-      const confirmedJob = { ...job, status: 'confirmed' as const };
+      const confirmedJob = { ...job, status: 'confirmed' as const, agentName: agentName, agentWallet: walletAddress };
       setConfirmedJobs(prev => [...prev, confirmedJob]);
       setAvailableJobs(prev => prev.filter(j => j.id !== jobId));
 
@@ -136,33 +141,36 @@ const AgentDashboard = () => {
       const allJobs = localStorage.getItem('deliveryJobs');
       if (allJobs) {
         const jobs = JSON.parse(allJobs);
-        const updatedJobs = jobs.map((j: DeliveryJob) => 
-          j.id === jobId ? { ...j, status: 'confirmed' } : j
+        const updatedJobs = jobs.map((j: any) => 
+          j.id === jobId ? { ...j, status: 'confirmed', agentName: agentName, agentWallet: walletAddress, confirmedAt: new Date().toISOString() } : j
         );
         localStorage.setItem('deliveryJobs', JSON.stringify(updatedJobs));
       }
 
       // Store agent confirmation for user to see
       const confirmation = {
+        orderId: jobId,
         agentName: agentName,
+        agentWallet: walletAddress,
         agentRating: 4.8,
         eta: "35 minutes",
-        pickupTime: "5 minutes"
+        pickupTime: "5 minutes",
+        confirmedAt: new Date().toISOString()
       };
       
       localStorage.setItem('agentConfirmations', JSON.stringify([confirmation]));
 
       toast({
         title: "Job confirmed successfully!",
-        description: `Transaction: ${txHash.slice(0, 10)}...`,
+        description: `Transaction: ${txHash.slice(0, 10)}... | Customer can now pay you!`,
       });
 
-      console.log('Job confirmed by:', agentName, confirmedJob);
+      console.log('Job confirmed by:', agentName, 'Order ID:', jobId);
     } catch (error) {
       console.error('Failed to confirm job:', error);
       toast({
         title: "Failed to confirm job",
-        description: "Please try again",
+        description: error instanceof Error ? error.message : "Please try again",
         variant: "destructive"
       });
     }
@@ -205,7 +213,14 @@ const AgentDashboard = () => {
               </div>
               <div className="mt-2 p-2 bg-secondary/30 rounded text-xs">
                 <p>Transaction: {payment.txHash?.slice(0, 20)}...</p>
+                <p>From: {payment.customerWallet?.slice(0, 10)}...</p>
+                <p className="text-green-400 font-medium">Status: {payment.status}</p>
               </div>
+            </div>
+            <div className="text-center">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
+                ✓ Payment Confirmed on Blockchain
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -213,7 +228,9 @@ const AgentDashboard = () => {
       {paymentNotifications.length === 0 && (
         <Card className="card-dark text-center py-12">
           <CardContent>
+            <DollarSign size={48} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No payments received yet</p>
+            <p className="text-sm text-muted-foreground mt-2">Payments will appear here after customers pay for confirmed orders</p>
           </CardContent>
         </Card>
       )}
