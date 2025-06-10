@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Clock, DollarSign, User, CheckCircle, Wallet, Bell } from 'lucide-react';
+import { MapPin, Clock, DollarSign, User, CheckCircle, Wallet, Bell, Play } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useICPWeb3 } from '../contexts/ICPWeb3Context';
 import { useToast } from '../hooks/use-toast';
 import AIDeliveryEstimator from '../components/AIDeliveryEstimator';
+import DemoModeIndicator from '../components/DemoModeIndicator';
 
 interface DeliveryJob {
   id: string;
@@ -94,7 +95,7 @@ const AgentDashboard = () => {
     try {
       const txHash = await registerAgent(agentName);
       toast({
-        title: "Agent registered successfully!",
+        title: "✅ Agent registered successfully!",
         description: `Transaction: ${txHash.slice(0, 10)}... on ICP blockchain`,
       });
     } catch (error) {
@@ -126,7 +127,7 @@ const AgentDashboard = () => {
     }
 
     try {
-      console.log('Confirming job:', jobId, 'by agent:', agentName);
+      console.log('🔄 Confirming job:', jobId, 'by agent:', agentName);
       
       // Confirm on ICP blockchain
       const txHash = await confirmOrder(jobId);
@@ -163,13 +164,13 @@ const AgentDashboard = () => {
       localStorage.setItem('agentConfirmations', JSON.stringify([confirmation]));
 
       toast({
-        title: "Job confirmed successfully!",
+        title: "🎉 Job confirmed successfully!",
         description: `Transaction: ${txHash.slice(0, 10)}... | Customer can now pay you on ICP!`,
       });
 
-      console.log('Job confirmed by:', agentName, 'Order ID:', jobId, 'Agent wallet:', walletAddress);
+      console.log('✅ Job confirmed by:', agentName, 'Order ID:', jobId, 'Agent wallet:', walletAddress);
     } catch (error) {
-      console.error('Failed to confirm job:', error);
+      console.error('❌ Failed to confirm job:', error);
       toast({
         title: "Failed to confirm job",
         description: error instanceof Error ? error.message : "Please try again",
@@ -200,13 +201,13 @@ const AgentDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-green-400">
               <DollarSign size={24} />
-              <span>Payment Received! 🎉</span>
+              <span>🎉 DEMO Payment Received!</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="bg-secondary/20 p-4 rounded-lg">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-lg">{payment.amount} ICP</h4>
+                <h4 className="font-semibold text-lg text-green-400">{payment.amount} ICP</h4>
                 <span className="text-sm text-muted-foreground">
                   {new Date(payment.timestamp).toLocaleString()}
                 </span>
@@ -233,12 +234,21 @@ const AgentDashboard = () => {
                   <p className="text-muted-foreground">From Principal</p>
                   <p className="font-mono text-xs">{payment.customerWallet?.slice(0, 15)}...</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground">Block Height</p>
+                  <p className="font-mono text-xs">{payment.blockchainData?.blockHeight}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Confirmations</p>
+                  <p className="font-mono text-xs">{payment.blockchainData?.confirmations}</p>
+                </div>
               </div>
             </div>
             
             <div className="flex items-center justify-center">
               <span className="inline-flex items-center px-4 py-2 rounded-full text-sm bg-green-500/20 text-green-400 border border-green-500/30">
-                ✓ Payment Confirmed on ICP Blockchain
+                <Play size={16} className="mr-2" />
+                ✓ Demo Payment Confirmed on ICP Blockchain
               </span>
             </div>
           </CardContent>
@@ -250,7 +260,7 @@ const AgentDashboard = () => {
             <DollarSign size={48} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No payments received yet</p>
             <p className="text-sm text-muted-foreground mt-2">
-              Payments will appear here after customers complete their orders on ICP
+              🎭 Demo payments will appear here after customers complete their orders
             </p>
           </CardContent>
         </Card>
@@ -358,6 +368,9 @@ const AgentDashboard = () => {
 
   return (
     <div className="min-h-screen p-6 space-y-6">
+      {/* Demo Mode Indicator */}
+      <DemoModeIndicator />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Delivery Jobs</h1>
@@ -392,7 +405,7 @@ const AgentDashboard = () => {
           {paymentNotifications.length > 0 && (
             <div className="flex items-center space-x-2 text-green-400">
               <Bell size={16} />
-              <span className="text-sm font-medium">{paymentNotifications.length} Payments</span>
+              <span className="text-sm font-medium">{paymentNotifications.length} Demo Payments</span>
             </div>
           )}
         </div>
@@ -443,6 +456,11 @@ const AgentDashboard = () => {
             }`}
           >
             {filter}
+            {filter === 'Payments' && paymentNotifications.length > 0 && (
+              <span className="ml-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                {paymentNotifications.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -458,7 +476,7 @@ const AgentDashboard = () => {
         )}
       </div>
 
-      {getFilteredJobs().length === 0 && (
+      {getFilteredJobs().length === 0 && activeFilter !== 'Payments' && (
         <Card className="card-dark text-center py-12">
           <CardContent>
             <p className="text-muted-foreground mb-4">No jobs found in this category</p>
