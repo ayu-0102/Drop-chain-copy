@@ -2,8 +2,25 @@ import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
 
+// Safely get environment variables with fallbacks
+const getEnvVar = (key: string, fallback: string) => {
+  try {
+    return process?.env?.[key] || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const getNodeEnv = () => {
+  try {
+    return process?.env?.NODE_ENV || 'development';
+  } catch {
+    return 'development';
+  }
+};
+
 // Canister ID - will be set after deployment
-export const CANISTER_ID = process.env.REACT_APP_CANISTER_ID || 'rdmx6-jaaaa-aaaah-qdrva-cai';
+export const CANISTER_ID = getEnvVar('REACT_APP_CANISTER_ID', 'rdmx6-jaaaa-aaaah-qdrva-cai');
 
 // IDL (Interface Description Language) for the Motoko contract
 export const idlFactory = ({ IDL }: any) => {
@@ -79,14 +96,15 @@ export class ICPWeb3Service {
       this.authClient = await AuthClient.create();
       
       // Create agent with proper host configuration
-      const host = process.env.NODE_ENV === 'production' 
+      const nodeEnv = getNodeEnv();
+      const host = nodeEnv === 'production' 
         ? 'https://ic0.app' 
         : 'http://localhost:4943';
       
       this.agent = new HttpAgent({ host });
 
       // Fetch root key for local development
-      if (process.env.NODE_ENV !== 'production') {
+      if (nodeEnv !== 'production') {
         await this.agent.fetchRootKey();
       }
 
@@ -116,7 +134,8 @@ export class ICPWeb3Service {
       }
 
       // Login with Internet Identity
-      const identityProvider = process.env.NODE_ENV === 'production' 
+      const nodeEnv = getNodeEnv();
+      const identityProvider = nodeEnv === 'production' 
         ? 'https://identity.ic0.app'
         : 'http://localhost:4943?canisterId=rdmx6-jaaaa-aaaah-qdrva-cai';
 
