@@ -1,27 +1,56 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Wallet, User, Truck } from 'lucide-react';
+import { useICPWeb3 } from '../contexts/ICPWeb3Context';
+import { useToast } from '../hooks/use-toast';
 
 const WalletConnection = () => {
   const [selectedRole, setSelectedRole] = useState<'user' | 'agent' | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const navigate = useNavigate();
+  const { connectWallet, isLoading, error } = useICPWeb3();
+  const { toast } = useToast();
 
-  const connectWallet = async () => {
-    if (!selectedRole) return;
+  const handleConnectWallet = async () => {
+    if (!selectedRole) {
+      toast({
+        title: "Role Required",
+        description: "Please select your role first",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsConnecting(true);
-    // Simulate wallet connection
-    setTimeout(() => {
-      setIsConnecting(false);
+    
+    try {
+      console.log('Starting Internet Identity connection...');
+      await connectWallet();
+      
+      toast({
+        title: "Connected Successfully!",
+        description: "Internet Identity connected successfully",
+      });
+      
+      // Navigate based on selected role
       if (selectedRole === 'user') {
         navigate('/user-dashboard');
       } else {
         navigate('/agent-dashboard');
       }
-    }, 2000);
+    } catch (error: any) {
+      console.error('Internet Identity connection failed:', error);
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to connect with Internet Identity",
+        variant: "destructive"
+      });
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   return (
@@ -88,12 +117,25 @@ const WalletConnection = () => {
             </div>
 
             <Button
-              onClick={connectWallet}
-              disabled={!selectedRole || isConnecting}
+              onClick={handleConnectWallet}
+              disabled={!selectedRole || isConnecting || isLoading}
               className="w-full gradient-button"
             >
-              {isConnecting ? 'Connecting...' : 'Connect with Internet Identity'}
+              {isConnecting || isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Connecting to Internet Identity...</span>
+                </div>
+              ) : (
+                'Connect with Internet Identity'
+              )}
             </Button>
+            
+            {error && (
+              <div className="text-center p-3 bg-destructive/20 rounded-lg">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
             
             <div className="text-center">
               <p className="text-xs text-muted-foreground">

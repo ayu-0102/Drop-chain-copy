@@ -78,10 +78,12 @@ export class ICPWeb3Service {
     try {
       this.authClient = await AuthClient.create();
       
-      // Create agent
-      this.agent = new HttpAgent({
-        host: process.env.NODE_ENV === 'production' ? 'https://ic0.app' : 'http://localhost:4943',
-      });
+      // Create agent with proper host configuration
+      const host = process.env.NODE_ENV === 'production' 
+        ? 'https://ic0.app' 
+        : 'http://localhost:4943';
+      
+      this.agent = new HttpAgent({ host });
 
       // Fetch root key for local development
       if (process.env.NODE_ENV !== 'production') {
@@ -114,18 +116,23 @@ export class ICPWeb3Service {
       }
 
       // Login with Internet Identity
+      const identityProvider = process.env.NODE_ENV === 'production' 
+        ? 'https://identity.ic0.app'
+        : 'http://localhost:4943?canisterId=rdmx6-jaaaa-aaaah-qdrva-cai';
+
+      console.log('Using Internet Identity provider:', identityProvider);
+
       await new Promise<void>((resolve, reject) => {
         this.authClient!.login({
-          identityProvider: process.env.NODE_ENV === 'production' 
-            ? 'https://identity.ic0.app/#authorize'
-            : `http://localhost:4943?canisterId=${process.env.REACT_APP_INTERNET_IDENTITY_CANISTER_ID || 'rdmx6-jaaaa-aaaah-qdrva-cai'}`,
+          identityProvider,
+          maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 7 days in nanoseconds
           onSuccess: () => {
-            console.log('Login successful');
+            console.log('Internet Identity login successful');
             resolve();
           },
           onError: (error) => {
-            console.error('Login failed:', error);
-            reject(error);
+            console.error('Internet Identity login failed:', error);
+            reject(new Error(`Login failed: ${error}`));
           },
         });
       });
@@ -148,13 +155,15 @@ export class ICPWeb3Service {
       throw new Error('Agent or identity not available');
     }
 
+    // Update agent identity
+    this.agent.replaceIdentity(this.identity);
+
     this.actor = Actor.createActor(idlFactory, {
       agent: this.agent,
       canisterId: CANISTER_ID,
     });
 
-    // Update agent identity
-    this.agent.replaceIdentity(this.identity);
+    console.log('Actor created successfully');
   }
 
   async registerAgent(name: string) {
