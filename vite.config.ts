@@ -21,9 +21,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    'process.env.NODE_ENV': JSON.stringify(mode),
-    'process.env.REACT_APP_CANISTER_ID': JSON.stringify(process.env.REACT_APP_CANISTER_ID || 'rdmx6-jaaaa-aaaah-qdrva-cai'),
-    'process.env.REACT_APP_INTERNET_IDENTITY_CANISTER_ID': JSON.stringify(process.env.REACT_APP_INTERNET_IDENTITY_CANISTER_ID || 'rdmx6-jaaaa-aaaah-qdrva-cai'),
-    'process.env.REACT_APP_DFX_NETWORK': JSON.stringify(process.env.REACT_APP_DFX_NETWORK || 'local'),
+    global: 'globalThis',
   },
 }));

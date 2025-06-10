@@ -1,26 +1,12 @@
+
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
 
-// Safely get environment variables with fallbacks
-const getEnvVar = (key: string, fallback: string) => {
-  try {
-    return process?.env?.[key] || fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const getNodeEnv = () => {
-  try {
-    return process?.env?.NODE_ENV || 'development';
-  } catch {
-    return 'development';
-  }
-};
-
-// Canister ID - will be set after deployment
-export const CANISTER_ID = getEnvVar('REACT_APP_CANISTER_ID', 'rdmx6-jaaaa-aaaah-qdrva-cai');
+// Production environment - always use mainnet
+const CANISTER_ID = 'rdmx6-jaaaa-aaaah-qdrva-cai';
+const IC_HOST = 'https://ic0.app';
+const IDENTITY_PROVIDER = 'https://identity.ic0.app';
 
 // IDL (Interface Description Language) for the Motoko contract
 export const idlFactory = ({ IDL }: any) => {
@@ -90,25 +76,15 @@ export class ICPWeb3Service {
   private identity: any = null;
 
   async initialize() {
-    console.log('Initializing ICP Web3 Service...');
+    console.log('Initializing ICP Web3 Service for mainnet...');
     
     try {
       this.authClient = await AuthClient.create();
       
-      // Create agent with proper host configuration
-      const nodeEnv = getNodeEnv();
-      const host = nodeEnv === 'production' 
-        ? 'https://ic0.app' 
-        : 'http://localhost:4943';
-      
-      this.agent = new HttpAgent({ host });
+      // Create agent for Internet Computer mainnet
+      this.agent = new HttpAgent({ host: IC_HOST });
 
-      // Fetch root key for local development
-      if (nodeEnv !== 'production') {
-        await this.agent.fetchRootKey();
-      }
-
-      console.log('ICP Web3 Service initialized successfully');
+      console.log('ICP Web3 Service initialized successfully for mainnet');
       return true;
     } catch (error) {
       console.error('Error initializing ICP Web3 Service:', error);
@@ -117,7 +93,7 @@ export class ICPWeb3Service {
   }
 
   async connectWallet() {
-    console.log('Attempting to connect ICP wallet...');
+    console.log('Connecting to Internet Identity...');
     
     if (!this.authClient) {
       throw new Error('Auth client not initialized');
@@ -133,17 +109,12 @@ export class ICPWeb3Service {
         return principal;
       }
 
-      // Login with Internet Identity
-      const nodeEnv = getNodeEnv();
-      const identityProvider = nodeEnv === 'production' 
-        ? 'https://identity.ic0.app'
-        : 'http://localhost:4943?canisterId=rdmx6-jaaaa-aaaah-qdrva-cai';
-
-      console.log('Using Internet Identity provider:', identityProvider);
+      // Login with Internet Identity mainnet
+      console.log('Redirecting to Internet Identity:', IDENTITY_PROVIDER);
 
       await new Promise<void>((resolve, reject) => {
         this.authClient!.login({
-          identityProvider,
+          identityProvider: IDENTITY_PROVIDER,
           maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 7 days in nanoseconds
           onSuccess: () => {
             console.log('Internet Identity login successful');
@@ -160,11 +131,11 @@ export class ICPWeb3Service {
       await this.createActor();
       
       const principal = this.identity.getPrincipal().toString();
-      console.log('Wallet connected with principal:', principal);
+      console.log('Internet Identity connected with principal:', principal);
       
       return principal;
     } catch (error) {
-      console.error('Failed to connect wallet:', error);
+      console.error('Failed to connect to Internet Identity:', error);
       throw error;
     }
   }
@@ -182,25 +153,25 @@ export class ICPWeb3Service {
       canisterId: CANISTER_ID,
     });
 
-    console.log('Actor created successfully');
+    console.log('ICP Actor created successfully');
   }
 
   async registerAgent(name: string) {
     if (!this.actor) throw new Error('Actor not initialized');
     
-    console.log('Registering agent:', name);
+    console.log('Registering agent on ICP:', name);
     
     try {
       const result = await this.actor.registerAgent(name);
       
       if ('ok' in result) {
-        console.log('Agent registered successfully:', result.ok);
+        console.log('Agent registered successfully on ICP:', result.ok);
         return result.ok;
       } else {
         throw new Error(result.err);
       }
     } catch (error) {
-      console.error('Error registering agent:', error);
+      console.error('Error registering agent on ICP:', error);
       throw error;
     }
   }
@@ -211,14 +182,14 @@ export class ICPWeb3Service {
     quantity: number,
     pickupLocation: string,
     dropLocation: string,
-    amountInEth: string
+    amountInICP: string
   ) {
     if (!this.actor) throw new Error('Actor not initialized');
     
-    console.log('Posting order:', { restaurant, dish, quantity, pickupLocation, dropLocation, amountInEth });
+    console.log('Posting order to ICP blockchain:', { restaurant, dish, quantity, pickupLocation, dropLocation, amountInICP });
     
     try {
-      const amount = parseFloat(amountInEth);
+      const amount = parseFloat(amountInICP);
       const result = await this.actor.postOrder(
         restaurant,
         dish,
@@ -229,13 +200,13 @@ export class ICPWeb3Service {
       );
       
       if ('ok' in result) {
-        console.log('Order posted successfully with ID:', result.ok);
+        console.log('Order posted successfully to ICP with ID:', result.ok);
         return result.ok.toString();
       } else {
         throw new Error(result.err);
       }
     } catch (error) {
-      console.error('Error posting order:', error);
+      console.error('Error posting order to ICP:', error);
       throw error;
     }
   }
@@ -243,40 +214,40 @@ export class ICPWeb3Service {
   async confirmOrder(orderId: string) {
     if (!this.actor) throw new Error('Actor not initialized');
     
-    console.log('Confirming order:', orderId);
+    console.log('Confirming order on ICP:', orderId);
     
     try {
       const result = await this.actor.confirmOrder(parseInt(orderId));
       
       if ('ok' in result) {
-        console.log('Order confirmed successfully:', result.ok);
+        console.log('Order confirmed successfully on ICP:', result.ok);
         return result.ok;
       } else {
         throw new Error(result.err);
       }
     } catch (error) {
-      console.error('Error confirming order:', error);
+      console.error('Error confirming order on ICP:', error);
       throw error;
     }
   }
 
-  async payAgent(orderId: string, amountInEth: string, agentWalletAddress: string) {
+  async payAgent(orderId: string, amountInICP: string, agentWalletAddress: string) {
     if (!this.actor) throw new Error('Actor not initialized');
     
-    console.log('Initiating payment to agent...', { orderId, amountInEth, agentWalletAddress });
+    console.log('Initiating ICP payment to agent...', { orderId, amountInICP, agentWalletAddress });
     
     try {
-      const amount = parseFloat(amountInEth);
+      const amount = parseFloat(amountInICP);
       const result = await this.actor.payAgent(parseInt(orderId), amount);
       
       if ('ok' in result) {
-        console.log('Payment successful:', result.ok);
+        console.log('ICP payment successful:', result.ok);
         return result.ok;
       } else {
         throw new Error(result.err);
       }
     } catch (error) {
-      console.error('Payment failed:', error);
+      console.error('ICP payment failed:', error);
       throw error;
     }
   }
@@ -293,7 +264,7 @@ export class ICPWeb3Service {
         throw new Error(result.err);
       }
     } catch (error) {
-      console.error('Error getting order:', error);
+      console.error('Error getting order from ICP:', error);
       return null;
     }
   }
@@ -311,7 +282,7 @@ export class ICPWeb3Service {
         throw new Error(result.err);
       }
     } catch (error) {
-      console.error('Error getting agent:', error);
+      console.error('Error getting agent from ICP:', error);
       return null;
     }
   }
@@ -324,10 +295,10 @@ export class ICPWeb3Service {
     
     try {
       const principal = this.identity.getPrincipal().toString();
-      console.log('Current wallet principal:', principal);
+      console.log('Current ICP principal:', principal);
       return principal;
     } catch (error) {
-      console.error('Error getting wallet address:', error);
+      console.error('Error getting ICP principal:', error);
       return null;
     }
   }
@@ -345,7 +316,7 @@ export class ICPWeb3Service {
       }
       return isAuthenticated;
     } catch (error) {
-      console.error('Error checking connection:', error);
+      console.error('Error checking ICP connection:', error);
       return false;
     }
   }
@@ -360,3 +331,4 @@ export class ICPWeb3Service {
 }
 
 export const icpWeb3Service = new ICPWeb3Service();
+export { CANISTER_ID };
