@@ -25,6 +25,16 @@ export default defineConfig(({ mode }) => ({
     'process.env': {},
   },
   optimizeDeps: {
-    include: ['js-sha256'],
+    include: ['js-sha256', '@dfinity/agent', '@dfinity/auth-client', '@dfinity/principal', '@dfinity/candid'],
   },
+  build: {
+    rollupOptions: {
+      external: [],
+      output: {
+        manualChunks: {
+          'dfinity': ['@dfinity/agent', '@dfinity/auth-client', '@dfinity/principal', '@dfinity/candid']
+        }
+      }
+    }
+  }
 }));

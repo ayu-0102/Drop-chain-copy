@@ -2,6 +2,7 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
+import { sha224 } from 'js-sha256';
 
 // Use Internet Computer mainnet configuration
 const IC_HOST = 'https://ic0.app';
@@ -178,25 +179,26 @@ export class ICPWeb3Service {
       canisterId: ICP_LEDGER_CANISTER_ID,
     });
 
-    // For demo purposes, we'll simulate a delivery platform canister
-    // In production, you would deploy your own canister
     console.log('ICP Actors created successfully');
   }
 
-  // Convert principal to account identifier for ICP ledger
+  // Convert principal to account identifier for ICP ledger using browser-compatible SHA256
   private principalToAccountIdentifier(principal: Principal): Uint8Array {
-    const sha224 = require('js-sha256').sha224;
-    const prefix = new Uint8Array([10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100]); // "account-id"
+    const prefix = new TextEncoder().encode('account-id');
     const principalBytes = principal.toUint8Array();
     const subAccount = new Uint8Array(32); // Default subaccount (all zeros)
     
-    const hash = sha224.create();
-    hash.update(prefix);
-    hash.update(principalBytes);
-    hash.update(subAccount);
+    // Concatenate all data
+    const data = new Uint8Array(prefix.length + principalBytes.length + subAccount.length);
+    data.set(prefix, 0);
+    data.set(principalBytes, prefix.length);
+    data.set(subAccount, prefix.length + principalBytes.length);
     
-    const hashArray = hash.array();
-    const crc32 = this.crc32(new Uint8Array(hashArray));
+    // Use sha224 from js-sha256 library
+    const hashHex = sha224(data);
+    const hashArray = new Uint8Array(hashHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    
+    const crc32 = this.crc32(hashArray);
     
     const accountId = new Uint8Array(32);
     accountId.set(crc32, 0);
@@ -273,6 +275,7 @@ export class ICPWeb3Service {
         created_at_time: []
       };
 
+      console.log('Initiating ICP transfer with args:', transferArgs);
       const result = await this.ledgerActor.transfer(transferArgs);
       
       if ('Ok' in result) {
