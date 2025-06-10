@@ -2,52 +2,53 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
-import { sha224 } from 'js-sha256';
 
 // Use Internet Computer mainnet configuration
 const IC_HOST = 'https://ic0.app';
 const IDENTITY_PROVIDER = 'https://identity.ic0.app';
 
-// Use the Internet Computer's NNS Ledger canister for ICP transactions
+// Use the correct ICRC-1 ICP Ledger canister for ICP transactions
 const ICP_LEDGER_CANISTER_ID = 'rrkah-fqaaa-aaaaa-aaaaq-cai'; // Official ICP Ledger canister
 
-// IDL for ICP Ledger canister
-export const ledgerIdlFactory = ({ IDL }: any) => {
-  const Tokens = IDL.Record({ e8s: IDL.Nat64 });
-  const TimeStamp = IDL.Record({ timestamp_nanos: IDL.Nat64 });
-  const AccountIdentifier = IDL.Vec(IDL.Nat8);
-  const SubAccount = IDL.Vec(IDL.Nat8);
-  const BlockIndex = IDL.Nat64;
+// ICRC-1 IDL for ICP Ledger canister (correct interface)
+export const icrc1LedgerIdlFactory = ({ IDL }: any) => {
+  const Tokens = IDL.Nat;
+  const Timestamp = IDL.Nat64;
+  const Account = IDL.Record({
+    owner: IDL.Principal,
+    subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
+  });
   
   const TransferArgs = IDL.Record({
-    memo: IDL.Nat64,
+    from_subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    to: Account,
     amount: Tokens,
-    fee: Tokens,
-    from_subaccount: IDL.Opt(SubAccount),
-    to: AccountIdentifier,
-    created_at_time: IDL.Opt(TimeStamp),
+    fee: IDL.Opt(Tokens),
+    memo: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    created_at_time: IDL.Opt(Timestamp),
   });
 
   const TransferResult = IDL.Variant({
-    Ok: BlockIndex,
+    Ok: IDL.Nat,
     Err: IDL.Variant({
       BadFee: IDL.Record({ expected_fee: Tokens }),
+      BadBurn: IDL.Record({ min_burn_amount: Tokens }),
       InsufficientFunds: IDL.Record({ balance: Tokens }),
-      TxTooOld: IDL.Record({ allowed_window_nanos: IDL.Nat64 }),
-      TxCreatedInFuture: IDL.Null,
-      TxDuplicate: IDL.Record({ duplicate_of: BlockIndex }),
+      TooOld: IDL.Null,
+      CreatedInFuture: IDL.Record({ ledger_time: Timestamp }),
+      Duplicate: IDL.Record({ duplicate_of: IDL.Nat }),
+      TemporarilyUnavailable: IDL.Null,
+      GenericError: IDL.Record({ error_code: IDL.Nat, message: IDL.Text }),
     }),
   });
 
-  const AccountBalanceArgs = IDL.Record({
-    account: AccountIdentifier,
-  });
-
   return IDL.Service({
-    transfer: IDL.Func([TransferArgs], [TransferResult], []),
-    account_balance: IDL.Func([AccountBalanceArgs], [Tokens], ['query']),
-    symbol: IDL.Func([], [IDL.Record({ symbol: IDL.Text })], ['query']),
-    decimals: IDL.Func([], [IDL.Record({ decimals: IDL.Nat32 })], ['query']),
+    icrc1_transfer: IDL.Func([TransferArgs], [TransferResult], []),
+    icrc1_balance_of: IDL.Func([Account], [Tokens], ['query']),
+    icrc1_decimals: IDL.Func([], [IDL.Nat8], ['query']),
+    icrc1_fee: IDL.Func([], [Tokens], ['query']),
+    icrc1_name: IDL.Func([], [IDL.Text], ['query']),
+    icrc1_symbol: IDL.Func([], [IDL.Text], ['query']),
   });
 };
 
@@ -173,63 +174,13 @@ export class ICPWeb3Service {
     // Update agent identity
     this.agent.replaceIdentity(this.identity);
 
-    // Create ledger actor for ICP transactions
-    this.ledgerActor = Actor.createActor(ledgerIdlFactory, {
+    // Create ledger actor for ICP transactions using ICRC-1 interface
+    this.ledgerActor = Actor.createActor(icrc1LedgerIdlFactory, {
       agent: this.agent,
       canisterId: ICP_LEDGER_CANISTER_ID,
     });
 
-    console.log('ICP Actors created successfully');
-  }
-
-  // Convert principal to account identifier for ICP ledger using browser-compatible SHA256
-  private principalToAccountIdentifier(principal: Principal): Uint8Array {
-    const prefix = new TextEncoder().encode('account-id');
-    const principalBytes = principal.toUint8Array();
-    const subAccount = new Uint8Array(32); // Default subaccount (all zeros)
-    
-    // Concatenate all data
-    const data = new Uint8Array(prefix.length + principalBytes.length + subAccount.length);
-    data.set(prefix, 0);
-    data.set(principalBytes, prefix.length);
-    data.set(subAccount, prefix.length + principalBytes.length);
-    
-    // Use sha224 from js-sha256 library
-    const hashHex = sha224(data);
-    const hashArray = new Uint8Array(hashHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-    
-    const crc32 = this.crc32(hashArray);
-    
-    const accountId = new Uint8Array(32);
-    accountId.set(crc32, 0);
-    accountId.set(hashArray.slice(0, 28), 4);
-    
-    return accountId;
-  }
-
-  private crc32(data: Uint8Array): Uint8Array {
-    const crcTable = new Uint32Array(256);
-    for (let i = 0; i < 256; i++) {
-      let crc = i;
-      for (let j = 0; j < 8; j++) {
-        crc = (crc & 1) ? (0xEDB88320 ^ (crc >>> 1)) : (crc >>> 1);
-      }
-      crcTable[i] = crc;
-    }
-
-    let crc = 0xFFFFFFFF;
-    for (let i = 0; i < data.length; i++) {
-      crc = crcTable[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
-    }
-    crc = crc ^ 0xFFFFFFFF;
-
-    const result = new Uint8Array(4);
-    result[0] = (crc >>> 24) & 0xFF;
-    result[1] = (crc >>> 16) & 0xFF;
-    result[2] = (crc >>> 8) & 0xFF;
-    result[3] = crc & 0xFF;
-    
-    return result;
+    console.log('ICP ICRC-1 Actors created successfully');
   }
 
   async getBalance() {
@@ -239,10 +190,13 @@ export class ICPWeb3Service {
 
     try {
       const principal = this.identity.getPrincipal();
-      const accountId = this.principalToAccountIdentifier(principal);
+      const account = {
+        owner: principal,
+        subaccount: [],
+      };
       
-      const balance = await this.ledgerActor.account_balance({ account: accountId });
-      const icpBalance = Number(balance.e8s) / 100000000; // Convert e8s to ICP
+      const balance = await this.ledgerActor.icrc1_balance_of(account);
+      const icpBalance = Number(balance) / 100000000; // Convert e8s to ICP
       
       console.log(`ICP Balance: ${icpBalance} ICP`);
       return icpBalance;
@@ -261,22 +215,31 @@ export class ICPWeb3Service {
       console.log(`Transferring ${amountICP} ICP to ${toPrincipal}`);
       
       const recipient = Principal.fromText(toPrincipal);
-      const toAccountId = this.principalToAccountIdentifier(recipient);
-      
       const amountE8s = BigInt(Math.floor(amountICP * 100000000)); // Convert ICP to e8s
-      const feeE8s = BigInt(10000); // Standard ICP transfer fee (0.0001 ICP)
+      
+      // Get current fee from ledger
+      const fee = await this.ledgerActor.icrc1_fee();
+      console.log('Current ICP transfer fee:', Number(fee) / 100000000, 'ICP');
       
       const transferArgs = {
-        memo: BigInt(Date.now()),
-        amount: { e8s: amountE8s },
-        fee: { e8s: feeE8s },
         from_subaccount: [],
-        to: toAccountId,
-        created_at_time: []
+        to: {
+          owner: recipient,
+          subaccount: [],
+        },
+        amount: amountE8s,
+        fee: [fee], // Optional fee, let ledger handle it
+        memo: [],
+        created_at_time: [BigInt(Date.now() * 1000000)] // Convert to nanoseconds
       };
 
-      console.log('Initiating ICP transfer with args:', transferArgs);
-      const result = await this.ledgerActor.transfer(transferArgs);
+      console.log('Initiating ICRC-1 ICP transfer with args:', {
+        ...transferArgs,
+        amount: `${amountICP} ICP (${amountE8s} e8s)`,
+        fee: `${Number(fee) / 100000000} ICP`
+      });
+
+      const result = await this.ledgerActor.icrc1_transfer(transferArgs);
       
       if ('Ok' in result) {
         const blockIndex = result.Ok;
@@ -287,9 +250,13 @@ export class ICPWeb3Service {
         console.error('ICP transfer failed:', error);
         
         if ('InsufficientFunds' in error) {
-          throw new Error('Insufficient ICP balance for transfer');
+          const balance = Number(error.InsufficientFunds.balance) / 100000000;
+          throw new Error(`Insufficient ICP balance. Current balance: ${balance} ICP`);
         } else if ('BadFee' in error) {
-          throw new Error('Incorrect fee amount');
+          const expectedFee = Number(error.BadFee.expected_fee) / 100000000;
+          throw new Error(`Incorrect fee. Expected fee: ${expectedFee} ICP`);
+        } else if ('GenericError' in error) {
+          throw new Error(`Transfer failed: ${error.GenericError.message}`);
         } else {
           throw new Error(`Transfer failed: ${JSON.stringify(error)}`);
         }
@@ -348,7 +315,15 @@ export class ICPWeb3Service {
     try {
       const amount = parseFloat(amountInICP);
       
-      // Execute real ICP transfer
+      // Check balance first
+      const balance = await this.getBalance();
+      console.log('Current ICP balance:', balance);
+      
+      if (balance < amount) {
+        throw new Error(`Insufficient balance. You have ${balance} ICP but need ${amount} ICP`);
+      }
+      
+      // Execute real ICP transfer using ICRC-1
       const txHash = await this.transferICP(agentPrincipal, amount);
       
       console.log('ICP payment successful! Transaction:', txHash);
